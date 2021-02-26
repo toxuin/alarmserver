@@ -10,52 +10,72 @@ import (
 	"time"
 )
 
-func init()  {
-	viper.SetDefault("TcpPort", "15002")
-	viper.SetDefault("MqttPort", "1883")
-	viper.SetDefault("MqttTopicRoot", "camera-alerts")
-	viper.SetDefault("MqttServer", "mqtt.example.com")
-	viper.SetDefault("MqttUsername", "anonymous")
-	viper.SetDefault("MqttPassword", "")
-	viper.SetDefault("Debug", false)
+type Config struct {
+	Debug     bool            `json:"debug"`
+	Mqtt      MqttConfig      `json:"mqtt"`
+	Hisilicon HisiliconConfig `json:"hisilicon"`
+	Hikvision HikvisionConfig `json:"hikvision"`
+}
 
-	_ = viper.BindEnv("TcpPort", "TCP_PORT")
-	_ = viper.BindEnv("MqttPort", "MQTT_PORT")
-	_ = viper.BindEnv("MqttTopicRoot", "MQTT_TOPIC_ROOT")
-	_ = viper.BindEnv("MqttServer", "MQTT_SERVER")
-	_ = viper.BindEnv("MqttUsername", "MQTT_USERNAME")
-	_ = viper.BindEnv("MqttPassword", "MQTT_PASSWORD")
-	_ = viper.BindEnv("Debug", "DEBUG")
+type MqttConfig struct {
+	Server    string `json:"server"`
+	Port      string `json:"port"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	TopicRoot string `json:"topicRoot"`
+}
 
-	if viper.GetBool("Debug") {
-		fmt.Printf(`STARTING WITH CONFIG:
-		TcpPort: %s,
-		MqttPort: %s,
-		MqttTopicRoot: %s,
-		MqttServer: %s,
-		MqttUsername: %s,
-		MqttPassword set: %t,
-		Debug: %t`+"\n",
-			viper.GetString("TcpPort"),
-			viper.GetString("MqttPort"),
-			viper.GetString("MqttTopicRoot"),
-			viper.GetString("MqttServer"),
-			viper.GetString("MqttUsername"),
-			viper.GetString("MqttPassword") != "",
-			viper.GetBool("Debug"),
-		)
-	}
+type HisiliconConfig struct {
+	Enabled bool   `json:"enabled"`
+	Port    string `json:"port"`
+}
+
+type HikvisionConfig struct {
+	Enabled bool                  `json:"enabled"`
+	Cams    []hikvision.HikCamera `json:"cams"`
 }
 
 var mqttClient MQTT.Client
+var config Config
 
-var TcpPort string
-var MqttPort string
-var MqttServer string
-var MqttUsername string
-var MqttPassword string
-var MqttTopicRoot string
-var Debug bool
+func init() {
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(".")
+
+	viper.SetDefault("debug", false)
+	viper.SetDefault("mqtt.port", 1883)
+	viper.SetDefault("mqtt.topicRoot", "camera-alerts")
+	viper.SetDefault("mqtt.server", "mqtt.example.com")
+	viper.SetDefault("mqtt.username", "anonymous")
+	viper.SetDefault("mqtt.password", "")
+	viper.SetDefault("hisilicon.enabled", true)
+	viper.SetDefault("hisilicon.port", 15002)
+	viper.SetDefault("hikvision.enabled", false)
+
+	_ = viper.BindEnv("debug", "DEBUG")
+	_ = viper.BindEnv("mqtt.port", "MQTT_PORT")
+	_ = viper.BindEnv("mqtt.topicRoot", "MQTT_TOPIC_ROOT")
+	_ = viper.BindEnv("mqtt.server", "MQTT_SERVER")
+	_ = viper.BindEnv("mqtt.username", "MQTT_USERNAME")
+	_ = viper.BindEnv("mqtt.password", "MQTT_PASSWORD")
+	_ = viper.BindEnv("hisilicon.enabled", "HISILICON_ENABLED")
+	_ = viper.BindEnv("hisilicon.port", "HISILICON_PORT", "TCP_PORT")
+	_ = viper.BindEnv("hikvision.enabled", "HIKVISION_ENABLED")
+	_ = viper.BindEnv("hikvision.cams", "HIKVISION_ENABLED")
+
+	err := viper.ReadInConfig()
+	if err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			err := viper.SafeWriteConfig()
+			if err != nil {
+				panic(fmt.Errorf("error saving default config file: %s \n", err))
+			}
+		} else {
+			panic(fmt.Errorf("error reading config file: %s \n", err))
+		}
+	}
+}
 
 func sendMqttMessage(topic string, payload interface{}) {
 	if !mqttClient.IsConnected() {
@@ -67,109 +87,105 @@ func sendMqttMessage(topic string, payload interface{}) {
 	}
 }
 
-func hexIpToCIDR(hexAddr string) string { // 0x1704A8C0 -> 192.168.4.23
-	hexAddrStr := fmt.Sprintf("%v", hexAddr)[2:]
-	ipAddrHexParts := strings.Split(hexAddrStr, "")
-
-	var decParts []string
-	lastPart := ""
-	for ind, part := range ipAddrHexParts {
-		if ind%2 == 0 {
-			lastPart = part
-		} else {
-			decParts = append(decParts, lastPart+part)
-		}
-	}
-	var strParts []string
-	for _, part := range decParts {
-		dec, _ := strconv.ParseInt(part, 16, 64)
-		// PREPEND RESULT TO SLICE
-		strParts = append(strParts, "")
-		copy(strParts[1:], strParts)
-		strParts[0] = strconv.Itoa(int(dec))
-	}
-	ipAddr := fmt.Sprintf("%s", strings.Join(strParts[:], "."))
-	return ipAddr
-}
-
-func handleTcpConnection(conn net.Conn) {
-	defer conn.Close()
-
-	if Debug {
-		fmt.Printf("DEVICE CONNECTED: %s\n", conn.RemoteAddr().String())
-	}
-	var buf bytes.Buffer
-
-	_, err := io.Copy(&buf, conn)
-	if err != nil {
-		fmt.Printf("TCP READ ERROR: %s\n", err)
-		return
-	}
-	bufString := buf.String()
-	resultString := bufString[strings.IndexByte(bufString, '{'):]
-	if Debug {
-		fmt.Printf("DEVICE ALERT: %s\n", resultString)
-	}
-
-
-	var dataMap map[string]interface{}
-
-	if err := json.Unmarshal([]byte(resultString), &dataMap); err != nil {
-		fmt.Printf("JSON PARSE ERROR: %s\n", err)
-		return
-	}
-	if dataMap["Address"] != nil {
-		hexAddrStr := fmt.Sprintf("%v", dataMap["Address"])
-		dataMap["ipAddr"] = hexIpToCIDR(hexAddrStr)
-	}
-
-	jsonBytes, err := json.Marshal(dataMap)
-	if err != nil {
-		fmt.Printf("JSON STRINGIFY ERROR: %s\n", err)
-		return
-	}
-
-	if dataMap["SerialID"] == nil {
-		fmt.Println("UNKNOWN DEVICE SERIAL ID")
-		fmt.Println(dataMap)
-		return
-	}
-
-	serialId := fmt.Sprintf("%v", dataMap["SerialID"])
-	event := fmt.Sprintf("%v", dataMap["Event"])
-
-	sendMqttMessage(MqttTopicRoot+ "/" + serialId + "/" + event, string(jsonBytes))
-}
-
 func main() {
 	// LOAD CONFIG
-	TcpPort = viper.GetString("TcpPort")
-	MqttPort = viper.GetString("MqttPort")
-	MqttServer = viper.GetString("MqttServer")
-	MqttUsername = viper.GetString("MqttUsername")
-	MqttPassword = viper.GetString("MqttPassword")
-	MqttTopicRoot = viper.GetString("MqttTopicRoot")
-	Debug = viper.GetBool("Debug")
+	config = Config{
+		Debug:     viper.GetBool("debug"),
+		Mqtt:      MqttConfig{},
+		Hisilicon: HisiliconConfig{},
+		Hikvision: HikvisionConfig{
+			Enabled: viper.GetBool("hikvision.enabled"),
+		},
+	}
+
+	err := viper.Sub("mqtt").Unmarshal(&config.Mqtt)
+	if err != nil {
+		panic(fmt.Errorf("unable to decode mqtt config, %v", err))
+	}
+	err = viper.Sub("hisilicon").Unmarshal(&config.Hisilicon)
+	if err != nil {
+		panic(fmt.Errorf("unable to decode hisilicon config, %v", err))
+	}
+
+	if !config.Hisilicon.Enabled && !config.Hikvision.Enabled {
+		panic("Both Hisilicon and Hikvision modules are disabled. Nothing to do!")
+	}
+
+	hikvisionCamsConfig := viper.Sub("hikvision.cams")
+	if hikvisionCamsConfig != nil {
+		camConfigs := viper.GetStringMapString("hikvision.cams")
+
+		for camName := range camConfigs {
+			camConfig := viper.Sub("hikvision.cams." + camName)
+			// CONSTRUCT CAMERA URL
+			url := ""
+			if camConfig.GetBool("https") {
+				url += "https://"
+			} else {
+				url += "http://"
+			}
+			url += camConfig.GetString("address") + "/ISAPI/"
+
+			camera := hikvision.HikCamera{
+				Name:     camName,
+				Url:      url,
+				Username: camConfig.GetString("username"),
+				Password: camConfig.GetString("password"),
+			}
+			if config.Debug {
+				fmt.Printf("Added Hikvision camera:\n"+
+					"  name: %s \n"+
+					"  url: %s \n"+
+					"  username: %s \n"+
+					"  password set: %t\n",
+					camera.Name,
+					camera.Url,
+					camera.Username,
+					camera.Password != "")
+			}
+
+			config.Hikvision.Cams = append(config.Hikvision.Cams, camera)
+		}
+	}
 
 	fmt.Println("STARTING...")
+	if config.Debug {
+		fmt.Printf("CONFIG:\n"+
+			"  Hisilicon module enabled: %t \n"+
+			"  Hikvision module enabled: %t \n"+
+			"  mqtt.port: %s \n"+
+			"  mqtt.topicRoot: %s \n"+
+			"  mqtt.server: %s \n"+
+			"  mqtt.username: %s \n"+
+			"  mqtt.password set: %t \n",
+			config.Hisilicon.Enabled,
+			config.Hikvision.Enabled,
+			config.Mqtt.Port,
+			config.Mqtt.TopicRoot,
+			config.Mqtt.Server,
+			config.Mqtt.Username,
+			config.Mqtt.Password != "",
+		)
+	}
+
 	// START MQTT BUS
-	mqttOpts := MQTT.NewClientOptions().AddBroker("tcp://" + MqttServer + ":" + MqttPort)
-	mqttOpts.SetUsername(MqttUsername)
-	if MqttPassword != "" {
-		mqttOpts.SetPassword(MqttPassword)
+	mqttOpts := MQTT.NewClientOptions().AddBroker("tcp://" + config.Mqtt.Server + ":" + config.Mqtt.Port)
+	mqttOpts.SetUsername(config.Mqtt.Username)
+	if config.Mqtt.Password != "" {
+		mqttOpts.SetPassword(config.Mqtt.Password)
 	}
 	mqttOpts.SetAutoReconnect(true)
-	mqttOpts.SetClientID("alarmserver-go")
+	mqttOpts.SetClientID("alarmserver-go" + string(rune(rand.Intn(100))))
 	mqttOpts.SetKeepAlive(2 * time.Second)
 	mqttOpts.SetPingTimeout(1 * time.Second)
-	mqttOpts.SetWill(MqttTopicRoot, `{ "status": "down" }`, 0, false)
+	mqttOpts.SetWill(config.Mqtt.TopicRoot+"/alarmserver", `{ "status": "down" }`, 0, false)
 
 	mqttOpts.OnConnect = func(client MQTT.Client) {
-		fmt.Printf("MQTT: CONNECTED TO %s\n", MqttServer)
+		fmt.Printf("MQTT: CONNECTED TO %s\n", config.Mqtt.Server)
 	}
 
 	mqttOpts.DefaultPublishHandler = func(client MQTT.Client, msg MQTT.Message) {
-		if Debug {
+		if config.Debug {
 			fmt.Printf("MQTT TOPIC: %s\n", msg.Topic())
 			fmt.Printf("MQTT MESSAGE: %s\n", msg.Payload())
 		}
@@ -180,12 +196,18 @@ func main() {
 		panic(token.Error())
 	}
 
-	sendMqttMessage(MqttTopicRoot, `{ "status": "up" }`)
+	sendMqttMessage(config.Mqtt.TopicRoot+"/alarmserver", `{ "status": "up" }`)
 
-	// START TCP SERVER
-	tcpListener, err := net.Listen("tcp4", ":" + TcpPort)
-	if err != nil {
-		panic(err)
+	if config.Hisilicon.Enabled {
+		// START HISILICON ALARM SERVER
+		hisiliconServer := hisilicon.Server{
+			Debug: config.Debug,
+			Port:  config.Hisilicon.Port,
+			MessageHandler: func(topic string, data string) {
+				sendMqttMessage(config.Mqtt.TopicRoot+"/"+topic, data)
+			},
+		}
+		hisiliconServer.Start()
 	}
 
 	if config.Hikvision.Enabled {
