@@ -1,15 +1,12 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/spf13/viper"
-	"io"
-	"net"
-	"strconv"
-	"strings"
+	"github.com/toxuin/alarmserver/lib/hikvision"
+	"github.com/toxuin/alarmserver/lib/hisilicon"
+	"math/rand"
 	"time"
 )
 
@@ -190,14 +187,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer tcpListener.Close()
 
-	for {
-		conn, err := tcpListener.Accept()
-		if err != nil {
-			panic(err)
+	if config.Hikvision.Enabled {
+		// START HIKVISION SERVER
+		hikvisionServer := hikvision.Server{
+			Debug:   config.Debug,
+			Cameras: &config.Hikvision.Cams,
 		}
-		go handleTcpConnection(conn)
+		hikvisionServer.Start()
 	}
-
 }

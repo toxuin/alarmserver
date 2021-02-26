@@ -1,4 +1,4 @@
-FROM golang:1.15-alpine AS build_base
+FROM golang:1.16-alpine AS build_base
 RUN apk add git
 
 WORKDIR /tmp/app
