@@ -132,16 +132,22 @@ func main() {
 				Username: camConfig.GetString("username"),
 				Password: camConfig.GetString("password"),
 			}
+			if camConfig.GetBool("rawTcp") {
+				camera.BrokenHttp = true
+			}
 			if config.Debug {
 				fmt.Printf("Added Hikvision camera:\n"+
 					"  name: %s \n"+
 					"  url: %s \n"+
 					"  username: %s \n"+
-					"  password set: %t\n",
+					"  password set: %t\n"+
+					"  rawRcp: %t\n",
 					camera.Name,
 					camera.Url,
 					camera.Username,
-					camera.Password != "")
+					camera.Password != "",
+					camera.BrokenHttp,
+				)
 			}
 
 			config.Hikvision.Cams = append(config.Hikvision.Cams, camera)
@@ -151,13 +157,13 @@ func main() {
 	fmt.Println("STARTING...")
 	if config.Debug {
 		fmt.Printf("CONFIG:\n"+
-			"  Hisilicon module enabled: %t \n"+
-			"  Hikvision module enabled: %t \n"+
-			"  mqtt.port: %s \n"+
-			"  mqtt.topicRoot: %s \n"+
-			"  mqtt.server: %s \n"+
-			"  mqtt.username: %s \n"+
-			"  mqtt.password set: %t \n",
+			"  Hisilicon module enabled: %t\n"+
+			"  Hikvision module enabled: %t\n"+
+			"  mqtt.port: %s\n"+
+			"  mqtt.topicRoot: %s\n"+
+			"  mqtt.server: %s\n"+
+			"  mqtt.username: %s\n"+
+			"  mqtt.password set: %t\n",
 			config.Hisilicon.Enabled,
 			config.Hikvision.Enabled,
 			config.Mqtt.Port,
@@ -215,6 +221,9 @@ func main() {
 		hikvisionServer := hikvision.Server{
 			Debug:   config.Debug,
 			Cameras: &config.Hikvision.Cams,
+			MessageHandler: func(topic string, data string) {
+				sendMqttMessage(config.Mqtt.TopicRoot+"/"+topic, data)
+			},
 		}
 		hikvisionServer.Start()
 	}
