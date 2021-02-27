@@ -3,7 +3,7 @@ RUN apk add git
 
 WORKDIR /tmp/app
 
-COPY main.go .
+COPY . .
 RUN go get -d ./... && go build -o ./out/alarmserver
 
 FROM alpine:3.12
