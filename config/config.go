@@ -107,21 +107,29 @@ func (c *Config) Load() *Config {
 		},
 	}
 
-	err := viper.Sub("mqtt").Unmarshal(&myConfig.Mqtt)
-	if err != nil {
-		panic(fmt.Errorf("unable to decode mqtt config, %v", err))
+	if viper.IsSet("mqtt") {
+		err := viper.Sub("mqtt").Unmarshal(&myConfig.Mqtt)
+		if err != nil {
+			panic(fmt.Errorf("unable to decode mqtt config, %v", err))
+		}
 	}
-	err = viper.Sub("webhooks").Unmarshal(&myConfig.Webhooks)
-	if err != nil {
-		panic(fmt.Errorf("unable to decode webhooks config, %v", err))
+	if viper.IsSet("webhooks") {
+		err := viper.Sub("webhooks").Unmarshal(&myConfig.Webhooks)
+		if err != nil {
+			panic(fmt.Errorf("unable to decode webhooks config, %v", err))
+		}
 	}
-	err = viper.Sub("hisilicon").Unmarshal(&myConfig.Hisilicon)
-	if err != nil {
-		panic(fmt.Errorf("unable to decode hisilicon config, %v", err))
+	if viper.IsSet("hisilicon") {
+		err := viper.Sub("hisilicon").Unmarshal(&myConfig.Hisilicon)
+		if err != nil {
+			panic(fmt.Errorf("unable to decode hisilicon config, %v", err))
+		}
 	}
-	err = viper.Sub("ftp").Unmarshal(&myConfig.Ftp)
-	if err != nil {
-		panic(fmt.Errorf("unable to decode FTP config, %v", err))
+	if viper.IsSet("ftp") {
+		err := viper.Sub("ftp").Unmarshal(&myConfig.Ftp)
+		if err != nil {
+			panic(fmt.Errorf("unable to decode FTP config, %v", err))
+		}
 	}
 
 	if !myConfig.Mqtt.Enabled && !myConfig.Webhooks.Enabled {
@@ -132,48 +140,51 @@ func (c *Config) Load() *Config {
 		panic("No Servers are enabled. Nothing to do!")
 	}
 
-	hikvisionCamsConfig := viper.Sub("hikvision.cams")
-	if hikvisionCamsConfig != nil {
-		camConfigs := viper.GetStringMapString("hikvision.cams")
+	if viper.IsSet("hikvision.cams") {
+		hikvisionCamsConfig := viper.Sub("hikvision.cams")
+		if hikvisionCamsConfig != nil {
+			camConfigs := viper.GetStringMapString("hikvision.cams")
 
-		for camName := range camConfigs {
-			camConfig := viper.Sub("hikvision.cams." + camName)
-			// CONSTRUCT CAMERA URL
-			url := ""
-			if camConfig.GetBool("https") {
-				url += "https://"
-			} else {
-				url += "http://"
-			}
-			url += camConfig.GetString("address") + "/ISAPI/"
+			for camName := range camConfigs {
+				camConfig := viper.Sub("hikvision.cams." + camName)
+				// CONSTRUCT CAMERA URL
+				url := ""
+				if camConfig.GetBool("https") {
+					url += "https://"
+				} else {
+					url += "http://"
+				}
+				url += camConfig.GetString("address") + "/ISAPI/"
 
-			camera := hikvision.HikCamera{
-				Name:     camName,
-				Url:      url,
-				Username: camConfig.GetString("username"),
-				Password: camConfig.GetString("password"),
-			}
-			if camConfig.GetBool("rawTcp") {
-				camera.BrokenHttp = true
-			}
-			if myConfig.Debug {
-				fmt.Printf("Added Hikvision camera:\n"+
-					"  name: %s \n"+
-					"  url: %s \n"+
-					"  username: %s \n"+
-					"  password set: %t\n"+
-					"  rawRcp: %t\n",
-					camera.Name,
-					camera.Url,
-					camera.Username,
-					camera.Password != "",
-					camera.BrokenHttp,
-				)
-			}
+				camera := hikvision.HikCamera{
+					Name:     camName,
+					Url:      url,
+					Username: camConfig.GetString("username"),
+					Password: camConfig.GetString("password"),
+				}
+				if camConfig.GetBool("rawTcp") {
+					camera.BrokenHttp = true
+				}
+				if myConfig.Debug {
+					fmt.Printf("Added Hikvision camera:\n"+
+						"  name: %s \n"+
+						"  url: %s \n"+
+						"  username: %s \n"+
+						"  password set: %t\n"+
+						"  rawRcp: %t\n",
+						camera.Name,
+						camera.Url,
+						camera.Username,
+						camera.Password != "",
+						camera.BrokenHttp,
+					)
+				}
 
-			myConfig.Hikvision.Cams = append(myConfig.Hikvision.Cams, camera)
+				myConfig.Hikvision.Cams = append(myConfig.Hikvision.Cams, camera)
+			}
 		}
 	}
+
 	return &myConfig
 }
 
