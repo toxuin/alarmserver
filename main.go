@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/toxuin/alarmserver/buses/mqtt"
+	"github.com/toxuin/alarmserver/buses/webhooks"
 	conf "github.com/toxuin/alarmserver/config"
 	"github.com/toxuin/alarmserver/servers/ftp"
 	"github.com/toxuin/alarmserver/servers/hikvision"
@@ -28,9 +29,17 @@ func main() {
 		mqttBus.Initialize(config.Mqtt)
 	}
 
+	webhookBus := webhooks.Bus{Debug: config.Debug}
+	if !config.Webhooks.Enabled {
+		webhookBus.Initialize(config.Webhooks)
+	}
+
 	messageHandler := func(topic string, data string) {
 		if config.Mqtt.Enabled {
 			mqttBus.SendMessage(config.Mqtt.TopicRoot+"/"+topic, data)
+		}
+		if config.Webhooks.Enabled {
+			webhookBus.SendMessage(topic, data)
 		}
 	}
 
