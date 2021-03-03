@@ -1,0 +1,43 @@
+debug: "false"
+
+hikvision:
+  enabled: true
+  cams:
+    myCam:
+      address: 192.168.1.69
+      https: false
+      username: admin
+      password: admin1234
+      rawTcp: false
+    myDoorbell:
+      address: 192.168.1.13
+      https: false
+      username: admin
+      password: admin666
+      # USE RAW TCP ONLY IF APP TELLS YOU SO. IT'S A LAST RESORT MEASURE!
+      rawTcp: true
+
+hisilicon:
+  enabled: true
+  port: 15002
+
+ftp:
+  enabled: true
+  port: 21
+  password: "root"
+  allowFiles: true
+  rootPath: "./ftp"
+
+mqtt:
+  enabled: true
+  username: alarmserver
+  password: "assword"
+  port: 1883
+  server: "mqtt.example.com"
+  topicroot: camera-alerts
+
+webhooks:
+  enabled: true
+  urls:
+    - "https://example.com/camera-webhooks"
+    - "https://example.com/another-endpoint"
