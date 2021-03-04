@@ -14,7 +14,7 @@ type Bus struct {
 	client MQTT.Client
 }
 
-func (mqtt Bus) Initialize(config config.MqttConfig) {
+func (mqtt *Bus) Initialize(config config.MqttConfig) {
 	fmt.Println("Initializing MQTT bus...")
 	mqttOpts := MQTT.NewClientOptions().AddBroker("tcp://" + config.Server + ":" + config.Port)
 	mqttOpts.SetUsername(config.Username)
@@ -45,7 +45,7 @@ func (mqtt Bus) Initialize(config config.MqttConfig) {
 	mqtt.SendMessage(config.TopicRoot+"/alarmserver", `{ "status": "up" }`)
 }
 
-func (mqtt Bus) SendMessage(topic string, payload interface{}) {
+func (mqtt *Bus) SendMessage(topic string, payload interface{}) {
 	if !mqtt.client.IsConnected() {
 		fmt.Println("MQTT: CLIENT NOT CONNECTED")
 		return
