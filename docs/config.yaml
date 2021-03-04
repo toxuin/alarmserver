@@ -1,4 +1,4 @@
-debug: "false"
+debug: false
 
 hikvision:
   enabled: true

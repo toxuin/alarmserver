@@ -17,9 +17,9 @@ Supported Delivery 📬:
 
 ## Configuration
 
-Create file `config.yml` in the folder where the application binary lives.
+Create file `config.yaml` in the folder where the application binary lives.
 
-Also see [sample config](docs/config.yml).
+Also see [sample config](docs/config.yaml).
 
 When alarm server is coming online, it will also send a status message to `/camera-alerts` topic with its status.
 

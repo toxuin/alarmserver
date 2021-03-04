@@ -36,7 +36,7 @@ func hexIpToCIDR(hexAddr string) string {
 	return ipAddr
 }
 
-func (server Server) handleTcpConnection(conn net.Conn) {
+func (server *Server) handleTcpConnection(conn net.Conn) {
 	defer conn.Close()
 
 	if server.Debug {
@@ -90,7 +90,7 @@ type Server struct {
 	MessageHandler func(topic string, data string)
 }
 
-func (server Server) Start() {
+func (server *Server) Start() {
 	if server.Port == "" {
 		server.Port = "15002" // DEFAULT PORT
 	}
@@ -101,18 +101,20 @@ func (server Server) Start() {
 		}
 	}
 
-	// START TCP SERVER
-	tcpListener, err := net.Listen("tcp4", ":"+server.Port)
-	if err != nil {
-		panic(err)
-	}
-	defer tcpListener.Close()
-
-	for {
-		conn, err := tcpListener.Accept()
+	go func() {
+		// START TCP SERVER
+		tcpListener, err := net.Listen("tcp4", ":"+server.Port)
 		if err != nil {
 			panic(err)
 		}
-		go server.handleTcpConnection(conn)
-	}
+		defer tcpListener.Close()
+
+		for {
+			conn, err := tcpListener.Accept()
+			if err != nil {
+				panic(err)
+			}
+			go server.handleTcpConnection(conn)
+		}
+	}()
 }

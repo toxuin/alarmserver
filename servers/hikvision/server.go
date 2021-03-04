@@ -46,7 +46,7 @@ type HikEventReader interface {
 	ReadEvents(camera *HikCamera, channel chan<- HikEvent, callback func())
 }
 
-func (server Server) addCamera(waitGroup *sync.WaitGroup, camera *HikCamera, eventChannel chan<- HikEvent) {
+func (server *Server) addCamera(waitGroup *sync.WaitGroup, camera *HikCamera, eventChannel chan<- HikEvent) {
 	waitGroup.Add(1)
 	if !camera.BrokenHttp {
 		camera.EventReader = &HttpEventReader{Debug: server.Debug}
@@ -74,7 +74,7 @@ func (server Server) addCamera(waitGroup *sync.WaitGroup, camera *HikCamera, eve
 	}()
 }
 
-func (server Server) Start() {
+func (server *Server) Start() {
 	if server.Cameras == nil || len(*server.Cameras) == 0 {
 		fmt.Println("HIK: Error: no cameras defined")
 		return

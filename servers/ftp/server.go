@@ -20,7 +20,7 @@ type Event struct {
 	Message    string `json:"message"`
 }
 
-func (serv Server) Start() {
+func (serv *Server) Start() {
 	if serv.MessageHandler == nil {
 		fmt.Println("FTP: Message handler is not set for FTP server - that's probably not what you want")
 		serv.MessageHandler = func(topic string, data string) {

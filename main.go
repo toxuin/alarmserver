@@ -27,11 +27,17 @@ func main() {
 	mqttBus := mqtt.Bus{Debug: config.Debug}
 	if config.Mqtt.Enabled {
 		mqttBus.Initialize(config.Mqtt)
+		if config.Debug {
+			fmt.Println("MQTT BUS INITIALIZED")
+		}
 	}
 
 	webhookBus := webhooks.Bus{Debug: config.Debug}
 	if !config.Webhooks.Enabled {
 		webhookBus.Initialize(config.Webhooks)
+		if config.Debug {
+			fmt.Println("WEBHOOK BUS INITIALIZED")
+		}
 	}
 
 	messageHandler := func(topic string, data string) {
@@ -51,6 +57,9 @@ func main() {
 			MessageHandler: messageHandler,
 		}
 		hisiliconServer.Start()
+		if config.Debug {
+			fmt.Println("STARTED HISILICON SERVER")
+		}
 	}
 
 	if config.Hikvision.Enabled {
@@ -61,6 +70,9 @@ func main() {
 			MessageHandler: messageHandler,
 		}
 		hikvisionServer.Start()
+		if config.Debug {
+			fmt.Println("STARTED HIKVISION SERVER")
+		}
 	}
 
 	if config.Ftp.Enabled {
@@ -73,5 +85,8 @@ func main() {
 			MessageHandler: messageHandler,
 		}
 		ftpServer.Start()
+		if config.Debug {
+			fmt.Println("STARTED FTP SERVER")
+		}
 	}
 }
