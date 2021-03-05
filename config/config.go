@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/spf13/viper"
+	"github.com/toxuin/alarmserver/servers/amcrest"
 	"github.com/toxuin/alarmserver/servers/hikvision"
 )
 
@@ -12,6 +13,7 @@ type Config struct {
 	Webhooks  WebhooksConfig  `json:"webhooks"`
 	Hisilicon HisiliconConfig `json:"hisilicon"`
 	Hikvision HikvisionConfig `json:"hikvision"`
+	Amcrest   AmcrestConfig   `json:"amcrest"`
 	Ftp       FtpConfig       `json:"ftp"`
 }
 
@@ -39,6 +41,11 @@ type HikvisionConfig struct {
 	Cams    []hikvision.HikCamera `json:"cams"`
 }
 
+type AmcrestConfig struct {
+	Enabled bool                `json:"enabled"`
+	Cams    []amcrest.AmcCamera `json:"cams"`
+}
+
 type FtpConfig struct {
 	Enabled    bool   `json:"enabled"`
 	Port       int    `json:"port"`
@@ -61,6 +68,7 @@ func (c *Config) SetDefaults() {
 	viper.SetDefault("hisilicon.enabled", true)
 	viper.SetDefault("hisilicon.port", 15002)
 	viper.SetDefault("hikvision.enabled", false)
+	viper.SetDefault("amcrest.enabled", false)
 	viper.SetDefault("ftp.enabled", false)
 	viper.SetDefault("ftp.port", 21)
 	viper.SetDefault("ftp.allowFiles", true)
@@ -76,7 +84,9 @@ func (c *Config) SetDefaults() {
 	_ = viper.BindEnv("hisilicon.enabled", "HISILICON_ENABLED")
 	_ = viper.BindEnv("hisilicon.port", "HISILICON_PORT", "TCP_PORT")
 	_ = viper.BindEnv("hikvision.enabled", "HIKVISION_ENABLED")
-	_ = viper.BindEnv("hikvision.cams", "HIKVISION_ENABLED")
+	_ = viper.BindEnv("hikvision.cams", "HIKVISION_CAMS")
+	_ = viper.BindEnv("amcrest.enabled", "AMCREST_ENABLED")
+	_ = viper.BindEnv("amcrest.cams", "AMCREST_CAMS")
 	_ = viper.BindEnv("ftp.enabled", "FTP_ENABLED")
 	_ = viper.BindEnv("ftp.port", "FTP_PORT")
 	_ = viper.BindEnv("ftp.allowFiles", "FTP_ALLOW_FILES")
@@ -102,9 +112,8 @@ func (c *Config) Load() *Config {
 		Mqtt:      MqttConfig{},
 		Webhooks:  WebhooksConfig{},
 		Hisilicon: HisiliconConfig{},
-		Hikvision: HikvisionConfig{
-			Enabled: viper.GetBool("hikvision.enabled"),
-		},
+		Hikvision: HikvisionConfig{},
+		Amcrest:   AmcrestConfig{},
 	}
 
 	if viper.IsSet("mqtt") {
@@ -125,6 +134,12 @@ func (c *Config) Load() *Config {
 			panic(fmt.Errorf("unable to decode hisilicon config, %v", err))
 		}
 	}
+	if viper.IsSet("amcrest") {
+		err := viper.Sub("amcrest").Unmarshal(&myConfig.Amcrest)
+		if err != nil {
+			panic(fmt.Errorf("unable to decode amcrest config, %v", err))
+		}
+	}
 	if viper.IsSet("ftp") {
 		err := viper.Sub("ftp").Unmarshal(&myConfig.Ftp)
 		if err != nil {
@@ -136,7 +151,7 @@ func (c *Config) Load() *Config {
 		panic("Both MQTT and Webhook buses are disabled. Nothing to do!")
 	}
 
-	if !myConfig.Hisilicon.Enabled && !myConfig.Hikvision.Enabled && !myConfig.Ftp.Enabled {
+	if !myConfig.Hisilicon.Enabled && !myConfig.Hikvision.Enabled && !myConfig.Amcrest.Enabled && !myConfig.Ftp.Enabled {
 		panic("No Servers are enabled. Nothing to do!")
 	}
 
@@ -185,22 +200,82 @@ func (c *Config) Load() *Config {
 		}
 	}
 
+	if viper.IsSet("amcrest.cams") {
+		amcrestCamsConfig := viper.Sub("amcrest.cams")
+		if amcrestCamsConfig != nil {
+			camConfigs := viper.GetStringMapString("amcrest.cams")
+			for camName := range camConfigs {
+				camConfig := viper.Sub("amcrest.cams." + camName)
+				// CONSTRUCT CAMERA URL
+				url := ""
+				if camConfig.GetBool("https") {
+					url += "https://"
+				} else {
+					url += "http://"
+				}
+				url += camConfig.GetString("address")
+
+				camera := amcrest.AmcCamera{
+					Debug:    myConfig.Debug,
+					Name:     camName,
+					Url:      url,
+					Username: camConfig.GetString("username"),
+					Password: camConfig.GetString("password"),
+				}
+				if myConfig.Debug {
+					fmt.Printf("Added Amcrest camera:\n"+
+						"  name: %s \n"+
+						"  url: %s \n"+
+						"  username: %s \n"+
+						"  password set: %t\n",
+						camera.Name,
+						camera.Url,
+						camera.Username,
+						camera.Password != "",
+					)
+				}
+
+				myConfig.Amcrest.Cams = append(myConfig.Amcrest.Cams, camera)
+			}
+		}
+	}
+
 	return &myConfig
 }
 
 func (c *Config) Printout() {
 	fmt.Printf("CONFIG:\n"+
 		"  Hisilicon server enabled: %t\n"+
+		"    port: %s\n"+
 		"  Hikvision server enabled: %t\n"+
+		"    cams: %v\n"+
+		"  Amcrest server enabled: %t\n"+
+		"    cams: %v\n"+
 		"  FTP server enabled: %t\n"+
-		"  mqtt.port: %s\n"+
-		"  mqtt.topicRoot: %s\n"+
-		"  mqtt.server: %s\n"+
-		"  mqtt.username: %s\n"+
-		"  mqtt.password set: %t\n",
+		"    allow files: %t\n"+
+		"    root path: %s\n"+
+		"    port: %v\n"+
+		"  Webhooks bus enabled: %t\n"+
+		"    URLs: %v\n"+
+		"  MQTT bus enabled: %t\n"+
+		"    port: %s\n"+
+		"    root topic: %s\n"+
+		"    server address: %s\n"+
+		"    username: %s\n"+
+		"    password set: %t\n",
 		c.Hisilicon.Enabled,
+		c.Hisilicon.Port,
 		c.Hikvision.Enabled,
+		len(c.Hikvision.Cams),
+		c.Amcrest.Enabled,
+		len(c.Amcrest.Cams),
 		c.Ftp.Enabled,
+		c.Ftp.AllowFiles,
+		c.Ftp.RootPath,
+		c.Ftp.Port,
+		c.Webhooks.Enabled,
+		len(c.Webhooks.Urls),
+		c.Mqtt.Enabled,
 		c.Mqtt.Port,
 		c.Mqtt.TopicRoot,
 		c.Mqtt.Server,

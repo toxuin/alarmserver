@@ -5,6 +5,7 @@ import (
 	"github.com/toxuin/alarmserver/buses/mqtt"
 	"github.com/toxuin/alarmserver/buses/webhooks"
 	conf "github.com/toxuin/alarmserver/config"
+	"github.com/toxuin/alarmserver/servers/amcrest"
 	"github.com/toxuin/alarmserver/servers/ftp"
 	"github.com/toxuin/alarmserver/servers/hikvision"
 	"github.com/toxuin/alarmserver/servers/hisilicon"
@@ -72,6 +73,19 @@ func main() {
 		hikvisionServer.Start()
 		if config.Debug {
 			fmt.Println("STARTED HIKVISION SERVER")
+		}
+	}
+
+	if config.Amcrest.Enabled {
+		// START AMCREST SERVER
+		amcServer := amcrest.Server{
+			Debug:          config.Debug,
+			Cameras:        &config.Amcrest.Cams,
+			MessageHandler: messageHandler,
+		}
+		amcServer.Start()
+		if config.Debug {
+			fmt.Println("STARTED AMCREST SERVER")
 		}
 	}
 
