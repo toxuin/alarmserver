@@ -14,7 +14,7 @@ hikvision:
       https: false
       username: admin
       password: admin666
-      # USE RAW TCP ONLY IF APP TELLS YOU SO. IT'S A LAST RESORT MEASURE!
+      # USE RAW TCP IF HTTP STREAMING DOES NOT WORK
       rawTcp: true
 
 hisilicon:

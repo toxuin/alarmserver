@@ -43,7 +43,7 @@ Alarm Server uses HTTP streaming to connect to each camera individually and subs
 
 Some lower-end cameras, especially doorbells and intercoms, have broken HTTP streaming implementation that can't open more that 1 connection and "close" the http response, but leave TCP connection open (without sending keep-alive header!). For those, Alarm Server has an alternative streaming implementation. To use it, set `rawTcp: true` in camera's config file.
 
-Note that `rawTcp` implementation is rather unstable on the camera's side and should be used as last resort. Hikvision cameras can be also used with Alarm Server's FTP server no problem. 
+Hikvision cameras can also be used with FTP server no problem. 
 
 ```yaml
 hikvision:
@@ -54,7 +54,7 @@ hikvision:
       https: false           # if your camera supports ONLY https - set to true
       username: admin        # username that you use to log in to camera's web panel 
       password: admin1234    # password that you use to log in to camera's web panel
-      rawTcp: false          # some cams have broken streaming. Set to true if nothing else works
+      rawTcp: false          # some cams have broken streaming. Set to true if normal HTTP streaming doesn't work 
 ```
 
 #### FTP
