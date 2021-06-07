@@ -33,7 +33,7 @@ func main() {
 	}
 
 	webhookBus := webhooks.Bus{Debug: config.Debug}
-	if !config.Webhooks.Enabled {
+	if config.Webhooks.Enabled {
 		webhookBus.Initialize(config.Webhooks)
 		if config.Debug {
 			fmt.Println("WEBHOOK BUS INITIALIZED")
