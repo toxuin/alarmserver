@@ -195,7 +195,6 @@ func (server *Server) Start() {
 			go server.MessageHandler(event.Camera.Name+"/"+event.Type, event.Message)
 		}
 	}(&waitGroup, eventChannel)
-	waitGroup.Add(1)
 
 	waitGroup.Wait()
 }
