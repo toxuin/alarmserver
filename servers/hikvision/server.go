@@ -24,6 +24,7 @@ type HikEvent struct {
 
 type Server struct {
 	Debug          bool
+	WaitGroup      *sync.WaitGroup
 	Cameras        *[]HikCamera
 	MessageHandler func(topic string, data string)
 }
@@ -87,23 +88,27 @@ func (server *Server) Start() {
 		}
 	}
 
-	waitGroup := sync.WaitGroup{}
+	cameraWaitGroup := sync.WaitGroup{}
 	eventChannel := make(chan HikEvent, 5)
 
 	// START ALL CAMERA LISTENERS
 	for _, camera := range *server.Cameras {
-		server.addCamera(&waitGroup, &camera, eventChannel)
+		server.addCamera(&cameraWaitGroup, &camera, eventChannel)
 	}
 
 	// START MESSAGE PROCESSOR
-	go func(waitGroup *sync.WaitGroup, channel <-chan HikEvent) {
-		defer waitGroup.Done()
+	go func(camWaitGroup *sync.WaitGroup, channel <-chan HikEvent) {
+		// WAIT GROUP FOR INDIVIDUAL CAMERAS
+		defer camWaitGroup.Done()
+
+		// EXTERNAL WAIT GROUP FOR PROCESSES
+		defer server.WaitGroup.Done()
+		server.WaitGroup.Add(1)
 		for {
 			event := <-channel
 			go server.MessageHandler(event.Camera.Name+"/"+event.Type, event.Message)
 		}
-	}(&waitGroup, eventChannel)
-	waitGroup.Add(1)
+	}(&cameraWaitGroup, eventChannel)
 
-	waitGroup.Wait()
+	cameraWaitGroup.Wait()
 }

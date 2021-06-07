@@ -3,10 +3,12 @@ package ftp
 import (
 	"fmt"
 	"goftp.io/server/v2"
+	"sync"
 )
 
 type Server struct {
 	Debug          bool
+	WaitGroup      *sync.WaitGroup
 	Port           int
 	AllowFiles     bool
 	RootPath       string
@@ -31,6 +33,9 @@ func (serv *Server) Start() {
 	if serv.Password == "" {
 		serv.Password = "root"
 	}
+
+	defer serv.WaitGroup.Done()
+	serv.WaitGroup.Add(1)
 
 	eventChannel := make(chan Event, 5)
 

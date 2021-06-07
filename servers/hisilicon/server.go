@@ -8,6 +8,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // Converts 0x1704A8C0 to 192.168.4.23
@@ -34,6 +35,13 @@ func hexIpToCIDR(hexAddr string) string {
 	}
 	ipAddr := fmt.Sprintf("%s", strings.Join(strParts[:], "."))
 	return ipAddr
+}
+
+type Server struct {
+	Debug          bool
+	WaitGroup      *sync.WaitGroup
+	Port           string
+	MessageHandler func(topic string, data string)
 }
 
 func (server *Server) handleTcpConnection(conn net.Conn) {
@@ -84,12 +92,6 @@ func (server *Server) handleTcpConnection(conn net.Conn) {
 	server.MessageHandler(serialId+"/"+event, string(jsonBytes))
 }
 
-type Server struct {
-	Debug          bool
-	Port           string
-	MessageHandler func(topic string, data string)
-}
-
 func (server *Server) Start() {
 	if server.Port == "" {
 		server.Port = "15002" // DEFAULT PORT
@@ -102,6 +104,9 @@ func (server *Server) Start() {
 	}
 
 	go func() {
+		defer server.WaitGroup.Done()
+		server.WaitGroup.Add(1)
+
 		// START TCP SERVER
 		tcpListener, err := net.Listen("tcp4", ":"+server.Port)
 		if err != nil {

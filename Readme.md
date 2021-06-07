@@ -43,7 +43,7 @@ Alarm Server uses HTTP streaming to connect to each camera individually and subs
 
 Some lower-end cameras, especially doorbells and intercoms, have broken HTTP streaming implementation that can't open more that 1 connection and "close" the http response, but leave TCP connection open (without sending keep-alive header!). For those, Alarm Server has an alternative streaming implementation. To use it, set `rawTcp: true` in camera's config file.
 
-Note that `rawTcp` implementation is rather unstable on the camera's side and should be used as last resort. Hikvision cameras can be also used with Alarm Server's FTP server no problem. 
+Hikvision cameras can also be used with FTP server no problem. 
 
 ```yaml
 hikvision:
@@ -54,7 +54,7 @@ hikvision:
       https: false           # if your camera supports ONLY https - set to true
       username: admin        # username that you use to log in to camera's web panel 
       password: admin1234    # password that you use to log in to camera's web panel
-      rawTcp: false          # some cams have broken streaming. Set to true if nothing else works
+      rawTcp: false          # some cams have broken streaming. Set to true if normal HTTP streaming doesn't work 
 ```
 
 #### FTP
@@ -92,17 +92,19 @@ If your camera works with Alarm Server - create an issue with some details about
 
 There is a pre-built image `toxuin/alarmserver`. It is a multi-architecture image and will work both on Intel/AMD machines, and your Raspberry PI too.
 
-Usage: `docker run -d -v $PWD/config.yml:/config.yml -v $PWD/ftp:/ftp -p 15002:15002 toxuin/alarmserver`
+Usage: `docker run -d -v $PWD/config.yml:/config.yml -v $PWD/ftp:/ftp -p 21:21 -p 15002:15002 toxuin/alarmserver`
 
 Explanation:
 
-  - `-d` makes it run in the background, so you don't have to stare at it's logs for it to keep running
+  - `-d` makes it run in the background, so you don't have to stare at its logs for it to keep running
 
   - `-v $PWD/config.yml:/config.yml` passes through your config from your machine into the container. Make sure the file exists.
 
   - `-v $PWD/ftp:/ftp` passes through a folder `ftp` from where you're running this command into the container. Not needed if you don't need FTP.
 
-  - `-p 15002:15002` allows your machine to pass through port 15002 that is used for HiSilicon alarms. Not needed if you don't need HiSilicon server. 
+  - `-p 21:21` allows your machine to pass through port 21 that is used for FTP server. Not needed if you're not using FTP server.
+
+  - `-p 15002:15002` same as above, but for port 15002 that's used by HiSilicon alarms server. Not needed if you don't need HiSilicon server.
 
 ## Feedback
 

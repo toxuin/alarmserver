@@ -9,6 +9,7 @@ import (
 	"github.com/toxuin/alarmserver/servers/ftp"
 	"github.com/toxuin/alarmserver/servers/hikvision"
 	"github.com/toxuin/alarmserver/servers/hisilicon"
+	"sync"
 )
 
 var config *conf.Config
@@ -24,6 +25,8 @@ func main() {
 		config.Printout()
 	}
 
+	processesWaitGroup := sync.WaitGroup{}
+
 	// INIT BUSES
 	mqttBus := mqtt.Bus{Debug: config.Debug}
 	if config.Mqtt.Enabled {
@@ -34,7 +37,7 @@ func main() {
 	}
 
 	webhookBus := webhooks.Bus{Debug: config.Debug}
-	if !config.Webhooks.Enabled {
+	if config.Webhooks.Enabled {
 		webhookBus.Initialize(config.Webhooks)
 		if config.Debug {
 			fmt.Println("WEBHOOK BUS INITIALIZED")
@@ -54,6 +57,7 @@ func main() {
 		// START HISILICON ALARM SERVER
 		hisiliconServer := hisilicon.Server{
 			Debug:          config.Debug,
+			WaitGroup:      &processesWaitGroup,
 			Port:           config.Hisilicon.Port,
 			MessageHandler: messageHandler,
 		}
@@ -64,9 +68,10 @@ func main() {
 	}
 
 	if config.Hikvision.Enabled {
-		// START HIKVISION SERVER
+		// START HIKVISION ALARM SERVER
 		hikvisionServer := hikvision.Server{
 			Debug:          config.Debug,
+			WaitGroup:      &processesWaitGroup,
 			Cameras:        &config.Hikvision.Cams,
 			MessageHandler: messageHandler,
 		}
@@ -93,9 +98,11 @@ func main() {
 		// START FTP SERVER
 		ftpServer := ftp.Server{
 			Debug:          config.Debug,
+			WaitGroup:      &processesWaitGroup,
 			Port:           config.Ftp.Port,
 			AllowFiles:     config.Ftp.AllowFiles,
 			RootPath:       config.Ftp.RootPath,
+			Password:       config.Ftp.Password,
 			MessageHandler: messageHandler,
 		}
 		ftpServer.Start()
@@ -103,4 +110,6 @@ func main() {
 			fmt.Println("STARTED FTP SERVER")
 		}
 	}
+
+	processesWaitGroup.Wait()
 }
