@@ -8,6 +8,7 @@ import (
 	"github.com/toxuin/alarmserver/servers/ftp"
 	"github.com/toxuin/alarmserver/servers/hikvision"
 	"github.com/toxuin/alarmserver/servers/hisilicon"
+	"sync"
 )
 
 var config *conf.Config
@@ -22,6 +23,8 @@ func main() {
 	if config.Debug {
 		config.Printout()
 	}
+
+	processesWaitGroup := sync.WaitGroup{}
 
 	// INIT BUSES
 	mqttBus := mqtt.Bus{Debug: config.Debug}
@@ -53,6 +56,7 @@ func main() {
 		// START HISILICON ALARM SERVER
 		hisiliconServer := hisilicon.Server{
 			Debug:          config.Debug,
+			WaitGroup:      &processesWaitGroup,
 			Port:           config.Hisilicon.Port,
 			MessageHandler: messageHandler,
 		}
@@ -66,6 +70,7 @@ func main() {
 		// START HIKVISION ALARM SERVER
 		hikvisionServer := hikvision.Server{
 			Debug:          config.Debug,
+			WaitGroup:      &processesWaitGroup,
 			Cameras:        &config.Hikvision.Cams,
 			MessageHandler: messageHandler,
 		}
@@ -79,6 +84,7 @@ func main() {
 		// START FTP SERVER
 		ftpServer := ftp.Server{
 			Debug:          config.Debug,
+			WaitGroup:      &processesWaitGroup,
 			Port:           config.Ftp.Port,
 			AllowFiles:     config.Ftp.AllowFiles,
 			RootPath:       config.Ftp.RootPath,
@@ -90,4 +96,6 @@ func main() {
 			fmt.Println("STARTED FTP SERVER")
 		}
 	}
+
+	processesWaitGroup.Wait()
 }
