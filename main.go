@@ -63,7 +63,7 @@ func main() {
 	}
 
 	if config.Hikvision.Enabled {
-		// START HIKVISION SERVER
+		// START HIKVISION ALARM SERVER
 		hikvisionServer := hikvision.Server{
 			Debug:          config.Debug,
 			Cameras:        &config.Hikvision.Cams,
@@ -82,6 +82,7 @@ func main() {
 			Port:           config.Ftp.Port,
 			AllowFiles:     config.Ftp.AllowFiles,
 			RootPath:       config.Ftp.RootPath,
+			Password:       config.Ftp.Password,
 			MessageHandler: messageHandler,
 		}
 		ftpServer.Start()
