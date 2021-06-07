@@ -85,6 +85,7 @@ func main() {
 		// START AMCREST SERVER
 		amcServer := amcrest.Server{
 			Debug:          config.Debug,
+			WaitGroup:      &processesWaitGroup,
 			Cameras:        &config.Amcrest.Cams,
 			MessageHandler: messageHandler,
 		}

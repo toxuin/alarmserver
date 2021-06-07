@@ -23,6 +23,7 @@ type AmcCamera struct {
 
 type Server struct {
 	Debug          bool
+	WaitGroup      *sync.WaitGroup
 	Cameras        *[]AmcCamera
 	MessageHandler func(topic string, data string)
 }
@@ -189,7 +190,13 @@ func (server *Server) Start() {
 
 	// START MESSAGE PROCESSOR
 	go func(waitGroup *sync.WaitGroup, channel <-chan AmcEvent) {
+		// WAIT GROUP FOR INDIVIDUAL CAMERAS
 		defer waitGroup.Done()
+
+		// EXTERNAL WAIT GROUP FOR PROCESSES
+		defer server.WaitGroup.Done()
+		server.WaitGroup.Add(1)
+
 		for {
 			event := <-channel
 			go server.MessageHandler(event.Camera.Name+"/"+event.Type, event.Message)
