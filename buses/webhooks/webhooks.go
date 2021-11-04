@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/toxuin/alarmserver/config"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -41,11 +42,20 @@ func (webhooks *Bus) send(url string, payload WebhookPayload) {
 	response, err := webhooks.client.Post(url, "application/json", bytes.NewBuffer(payloadJson))
 	if err != nil {
 		fmt.Printf("WEBHOOKS: Error delivering payload %s to %s\n", payloadJson, url)
+		if webhooks.Debug {
+			fmt.Println("Webhooks: Error", err)
+		}
 	}
 	if response == nil {
-		fmt.Printf("WEBHOOKS: Got no response from %s", url)
+		fmt.Printf("WEBHOOKS: Got no response from %s\n", url)
+		return
 	}
-	if response != nil && response.StatusCode != 200 {
+	if response.StatusCode != 200 {
 		fmt.Printf("WEBHOOKS: Got bad status code delivering payload to %s: %v\n", url, response.StatusCode)
+	}
+	if webhooks.Debug {
+		bodyBytes, _ := ioutil.ReadAll(response.Body)
+		bodyStr := string(bodyBytes)
+		fmt.Printf("WEBHOOKS: Response body: %s\n", bodyStr)
 	}
 }
