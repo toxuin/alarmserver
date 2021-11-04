@@ -34,47 +34,49 @@ func (serv *Server) Start() {
 		serv.Password = "root"
 	}
 
-	defer serv.WaitGroup.Done()
-	serv.WaitGroup.Add(1)
+	go func() {
+		defer serv.WaitGroup.Done()
+		serv.WaitGroup.Add(1)
 
-	eventChannel := make(chan Event, 5)
+		eventChannel := make(chan Event, 5)
 
-	// START MESSAGE PROCESSOR
-	go func(channel <-chan Event) {
-		for {
-			event := <-channel
-			go serv.MessageHandler(event.CameraName+"/"+event.Type, event.Message)
+		// START MESSAGE PROCESSOR
+		go func(channel <-chan Event) {
+			for {
+				event := <-channel
+				go serv.MessageHandler(event.CameraName+"/"+event.Type, event.Message)
+			}
+		}(eventChannel)
+
+		driver, err := NewDriver(serv.Debug, serv.RootPath, serv.AllowFiles, eventChannel)
+		if err != nil {
+			fmt.Println("FTP: Cannot init driver")
 		}
-	}(eventChannel)
 
-	driver, err := NewDriver(serv.Debug, serv.RootPath, serv.AllowFiles, eventChannel)
-	if err != nil {
-		fmt.Println("FTP: Cannot init driver")
-	}
+		opt := &server.Options{
+			Name:           "alarmserver-go",
+			WelcomeMessage: "HI",
+			Driver:         driver,
+			Port:           serv.Port,
+			Perm:           server.NewSimplePerm("root", "root"),
+			Auth:           &DumbAuth{Debug: serv.Debug, Password: serv.Password},
+		}
 
-	opt := &server.Options{
-		Name:           "alarmserver-go",
-		WelcomeMessage: "HI",
-		Driver:         driver,
-		Port:           serv.Port,
-		Perm:           server.NewSimplePerm("root", "root"),
-		Auth:           &DumbAuth{Debug: serv.Debug, Password: serv.Password},
-	}
+		if !serv.Debug {
+			opt.Logger = &server.DiscardLogger{}
+		}
 
-	if !serv.Debug {
-		opt.Logger = &server.DiscardLogger{}
-	}
-
-	ftpServer, err := server.NewServer(opt)
-	if err != nil {
-		fmt.Println("FTP: Cannot start FTP server", err)
-		return
-	}
-	err = ftpServer.ListenAndServe()
-	if err != nil {
-		fmt.Println(fmt.Sprintf("FTP: Cannot listen on port %v", serv.Port), err)
-		return
-	}
-	defer ftpServer.Shutdown()
-	fmt.Printf("FTP: Listening on port %v", serv.Port)
+		ftpServer, err := server.NewServer(opt)
+		if err != nil {
+			fmt.Println("FTP: Cannot start FTP server", err)
+			return
+		}
+		err = ftpServer.ListenAndServe()
+		if err != nil {
+			fmt.Println(fmt.Sprintf("FTP: Cannot listen on port %v", serv.Port), err)
+			return
+		}
+		defer ftpServer.Shutdown()
+		fmt.Printf("FTP: Listening on port %v", serv.Port)
+	}()
 }
