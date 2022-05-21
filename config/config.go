@@ -51,6 +51,7 @@ func (c *Config) SetDefaults() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
+	viper.AddConfigPath("./config/")
 
 	viper.SetDefault("debug", false)
 	viper.SetDefault("mqtt.port", 1883)
@@ -86,6 +87,7 @@ func (c *Config) SetDefaults() {
 	err := viper.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			fmt.Println("Config file not found, writing default config...")
 			err := viper.SafeWriteConfig()
 			if err != nil {
 				panic(fmt.Errorf("error saving default config file: %s \n", err))
