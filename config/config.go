@@ -25,8 +25,15 @@ type MqttConfig struct {
 }
 
 type WebhooksConfig struct {
-	Enabled bool     `json:"enabled"`
-	Urls    []string `json:"urls"`
+	Enabled bool            `json:"enabled"`
+	Items   []WebhookConfig `json:"items"`
+	Urls    []string        `json:"urls"`
+}
+
+type WebhookConfig struct {
+	Url     string   `json:"url"`
+	Method  string   `json:"method"`
+	Headers []string `json:"headers"`
 }
 
 type HisiliconConfig struct {

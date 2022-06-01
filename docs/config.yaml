@@ -38,6 +38,14 @@ mqtt:
 
 webhooks:
   enabled: true
+  items:
+    - url: "https://webhook.site/52d57401-0ea3-4e43-80a0-ceb02fba2d1e"
+      method: "GET" # DEFAULTS TO POST
+      headers:
+        - "X-Beep: boop"
+    - url: "https://api.telegram.org/bot121212121:token/sendMessage?chat_id=43434343434&text=hello"
+
+  # SIMPLE SHORTHAND FORM FOR THE SAME STUFF AS ABOVE, WILL PERFORM A POST TO EACH URL
   urls:
     - "https://example.com/camera-webhooks"
     - "https://example.com/another-endpoint"
