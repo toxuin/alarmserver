@@ -22,6 +22,8 @@ func (mqtt *Bus) Initialize(config config.MqttConfig) {
 		mqttOpts.SetPassword(config.Password)
 	}
 	mqttOpts.SetAutoReconnect(true)
+	mqttOpts.SetMaxReconnectInterval(10 * time.Second)
+
 	mqttOpts.SetClientID("alarmserver-go-" + strconv.Itoa(rand.Intn(100)))
 	mqttOpts.SetKeepAlive(2 * time.Second)
 	mqttOpts.SetPingTimeout(1 * time.Second)
@@ -30,6 +32,13 @@ func (mqtt *Bus) Initialize(config config.MqttConfig) {
 	mqttOpts.OnConnect = func(client MQTT.Client) {
 		fmt.Printf("MQTT: CONNECTED TO %s\n", config.Server)
 	}
+
+	mqttOpts.SetConnectionLostHandler(func(client MQTT.Client, err error) {
+		fmt.Printf("MQTT ERROR - connection lost: %+v\n", err)
+	})
+	mqttOpts.SetReconnectingHandler(func(client MQTT.Client, options *MQTT.ClientOptions) {
+		fmt.Println("MQTT: ...trying to reconnect...")
+	})
 
 	mqttOpts.DefaultPublishHandler = func(client MQTT.Client, msg MQTT.Message) {
 		if mqtt.Debug {
