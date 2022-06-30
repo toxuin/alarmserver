@@ -199,21 +199,39 @@ func (c *Config) Load() *Config {
 
 func (c *Config) Printout() {
 	fmt.Printf("CONFIG:\n"+
-		"  Hisilicon server enabled: %t\n"+
-		"  Hikvision server enabled: %t\n"+
-		"  FTP server enabled: %t\n"+
-		"  mqtt.port: %s\n"+
-		"  mqtt.topicRoot: %s\n"+
-		"  mqtt.server: %s\n"+
-		"  mqtt.username: %s\n"+
-		"  mqtt.password set: %t\n",
+		"  SERVER: Hisilicon - enabled: %t\n"+
+		"    port: %s\n"+
+		"  SERVER: Hikvision - enabled: %t\n"+
+		"    camera count: %d\n"+
+		"  SERVER: FTP - enabled: %t\n"+
+		"    port: %d\n"+
+		"    files allowed: %t\n"+
+		"    password set: %t\n"+
+		"    root path: %s\n"+
+		"  BUS: MQTT - enabled: %t\n"+
+		"    port: %s\n"+
+		"    topicRoot: %s\n"+
+		"    server: %s\n"+
+		"    username: %s\n"+
+		"    password set: %t\n"+
+		"  BUS: Webhooks - enabled: %t\n"+
+		"    count: %d\n",
 		c.Hisilicon.Enabled,
+		c.Hisilicon.Port,
 		c.Hikvision.Enabled,
+		len(c.Hikvision.Cams),
 		c.Ftp.Enabled,
+		c.Ftp.Port,
+		c.Ftp.AllowFiles,
+		c.Ftp.Password != "",
+		c.Ftp.RootPath,
+		c.Mqtt.Enabled,
 		c.Mqtt.Port,
 		c.Mqtt.TopicRoot,
 		c.Mqtt.Server,
 		c.Mqtt.Username,
 		c.Mqtt.Password != "",
+		c.Webhooks.Enabled,
+		len(c.Webhooks.Items)+len(c.Webhooks.Urls),
 	)
 }
