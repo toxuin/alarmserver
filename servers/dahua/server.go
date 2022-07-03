@@ -1,4 +1,4 @@
-package amcrest
+package dahua
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-type AmcCamera struct {
+type DhCamera struct {
 	Debug    bool
 	Name     string `json:"name"`
 	Url      string `json:"url"`
@@ -24,12 +24,12 @@ type AmcCamera struct {
 type Server struct {
 	Debug          bool
 	WaitGroup      *sync.WaitGroup
-	Cameras        *[]AmcCamera
+	Cameras        *[]DhCamera
 	MessageHandler func(topic string, data string)
 }
 
-type AmcEvent struct {
-	Camera  *AmcCamera
+type DhEvent struct {
+	Camera  *DhCamera
 	Type    string
 	Message string
 }
@@ -42,11 +42,11 @@ type Event struct {
 	active bool
 }
 
-func (camera *AmcCamera) readEvents(channel chan<- AmcEvent, callback func()) {
+func (camera *DhCamera) readEvents(channel chan<- DhEvent, callback func()) {
 	request, err := http.NewRequest("GET", camera.Url+"/cgi-bin/eventManager.cgi?action=attach&codes=All", nil)
 	if err != nil {
-		fmt.Printf("AMC: Error: Could not connect to camera %s\n", camera.Name)
-		fmt.Println("AMC: Error", err)
+		fmt.Printf("DAHUA: Error: Could not connect to camera %s\n", camera.Name)
+		fmt.Println("DAHUA: Error", err)
 		callback()
 		return
 	}
@@ -54,23 +54,23 @@ func (camera *AmcCamera) readEvents(channel chan<- AmcEvent, callback func()) {
 
 	response, err := camera.client.Do(request)
 	if err != nil {
-		fmt.Printf("AMC: Error opening HTTP connection to camera %s\n", camera.Name)
+		fmt.Printf("DAHUA: Error opening HTTP connection to camera %s\n", camera.Name)
 		fmt.Println(err)
 		return
 	}
 
 	if response.StatusCode != 200 {
-		fmt.Printf("AMC: Warning: Status Code was not 200, but %v\n", response.StatusCode)
+		fmt.Printf("DAHUA: Warning: Status Code was not 200, but %v\n", response.StatusCode)
 	}
 
 	// FIGURE OUT MULTIPART BOUNDARY
 	mediaType, params, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
 	if camera.Debug {
-		fmt.Printf("AMC: Media type is %s\n", mediaType)
+		fmt.Printf("DAHUA: Media type is %s\n", mediaType)
 	}
 
 	if params["boundary"] == "" {
-		fmt.Println("AMC: ERROR: Camera " + camera.Name + " does not seem to support event streaming")
+		fmt.Println("DAHUA: ERROR: Camera " + camera.Name + " does not seem to support event streaming")
 		callback()
 		return
 	}
@@ -96,7 +96,7 @@ func (camera *AmcCamera) readEvents(channel chan<- AmcEvent, callback func()) {
 		}
 
 		if camera.Debug {
-			fmt.Printf("AMC: Read event body: %s\n", body)
+			fmt.Printf("DAHUA: Read event body: %s\n", body)
 		}
 
 		// EXAMPLE: "Code=VideoMotion; action=Start; index=0\r\n\r\n"
@@ -121,17 +121,17 @@ func (camera *AmcCamera) readEvents(channel chan<- AmcEvent, callback func()) {
 		case "Start":
 			if !event.active {
 				if camera.Debug {
-					fmt.Println("AMC: SENDING CAMERA EVENT!")
+					fmt.Println("DAHUA: SENDING CAMERA EVENT!")
 				}
-				amcEvent := AmcEvent{
+				dahuaEvent := DhEvent{
 					Camera:  camera,
 					Type:    event.Code,
 					Message: event.Data,
 				}
-				if amcEvent.Message == "" {
-					amcEvent.Message = event.Action
+				if dahuaEvent.Message == "" {
+					dahuaEvent.Message = event.Action
 				}
-				channel <- amcEvent
+				channel <- dahuaEvent
 			}
 			event.active = true
 		case "Stop":
@@ -140,11 +140,11 @@ func (camera *AmcCamera) readEvents(channel chan<- AmcEvent, callback func()) {
 	}
 }
 
-func (server *Server) addCamera(waitGroup *sync.WaitGroup, cam *AmcCamera, channel chan<- AmcEvent) {
+func (server *Server) addCamera(waitGroup *sync.WaitGroup, cam *DhCamera, channel chan<- DhEvent) {
 	waitGroup.Add(1)
 
 	if server.Debug {
-		fmt.Printf("AMC: Adding camera %s: %s\n", cam.Name, cam.Url)
+		fmt.Printf("DAHUA: Adding camera %s: %s\n", cam.Name, cam.Url)
 	}
 
 	if cam.client == nil {
@@ -164,32 +164,32 @@ func (server *Server) addCamera(waitGroup *sync.WaitGroup, cam *AmcCamera, chann
 			}
 			go cam.readEvents(channel, callback)
 		}
-		fmt.Printf("AMC: Closed connection to camera %s\n", cam.Name)
+		fmt.Printf("DAHUA: Closed connection to camera %s\n", cam.Name)
 	}()
 }
 
 func (server *Server) Start() {
 	if server.Cameras == nil || len(*server.Cameras) == 0 {
-		fmt.Println("AMC: Error: no cameras defined")
+		fmt.Println("DAHUA: Error: no cameras defined")
 		return
 	}
 
 	if server.MessageHandler == nil {
-		fmt.Println("AMC: Message handler is not set for Amcrest cams - that's probably not what you want")
+		fmt.Println("DAHUA: Message handler is not set for Dahua cams - that's probably not what you want")
 		server.MessageHandler = func(topic string, data string) {
-			fmt.Printf("AMC: Lost alarm: %s: %s\n", topic, data)
+			fmt.Printf("DAHUA: Lost alarm: %s: %s\n", topic, data)
 		}
 	}
 
 	waitGroup := sync.WaitGroup{}
-	eventChannel := make(chan AmcEvent, 5)
+	eventChannel := make(chan DhEvent, 5)
 
 	for _, camera := range *server.Cameras {
 		server.addCamera(&waitGroup, &camera, eventChannel)
 	}
 
 	// START MESSAGE PROCESSOR
-	go func(waitGroup *sync.WaitGroup, channel <-chan AmcEvent) {
+	go func(waitGroup *sync.WaitGroup, channel <-chan DhEvent) {
 		// WAIT GROUP FOR INDIVIDUAL CAMERAS
 		defer waitGroup.Done()
 

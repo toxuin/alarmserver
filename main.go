@@ -5,7 +5,7 @@ import (
 	"github.com/toxuin/alarmserver/buses/mqtt"
 	"github.com/toxuin/alarmserver/buses/webhooks"
 	conf "github.com/toxuin/alarmserver/config"
-	"github.com/toxuin/alarmserver/servers/amcrest"
+	"github.com/toxuin/alarmserver/servers/dahua"
 	"github.com/toxuin/alarmserver/servers/ftp"
 	"github.com/toxuin/alarmserver/servers/hikvision"
 	"github.com/toxuin/alarmserver/servers/hisilicon"
@@ -81,17 +81,17 @@ func main() {
 		}
 	}
 
-	if config.Amcrest.Enabled {
-		// START AMCREST SERVER
-		amcServer := amcrest.Server{
+	if config.Dahua.Enabled {
+		// START DAHUA SERVER
+		dhServer := dahua.Server{
 			Debug:          config.Debug,
 			WaitGroup:      &processesWaitGroup,
-			Cameras:        &config.Amcrest.Cams,
+			Cameras:        &config.Dahua.Cams,
 			MessageHandler: messageHandler,
 		}
-		amcServer.Start()
+		dhServer.Start()
 		if config.Debug {
-			fmt.Println("STARTED AMCREST SERVER")
+			fmt.Println("STARTED DAHUA SERVER")
 		}
 	}
 

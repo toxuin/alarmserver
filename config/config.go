@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/spf13/viper"
-	"github.com/toxuin/alarmserver/servers/amcrest"
+	"github.com/toxuin/alarmserver/servers/dahua"
 	"github.com/toxuin/alarmserver/servers/hikvision"
 )
 
@@ -13,7 +13,7 @@ type Config struct {
 	Webhooks  WebhooksConfig  `json:"webhooks"`
 	Hisilicon HisiliconConfig `json:"hisilicon"`
 	Hikvision HikvisionConfig `json:"hikvision"`
-	Amcrest   AmcrestConfig   `json:"amcrest"`
+	Dahua     DahuaConfig     `json:"dahua"`
 	Ftp       FtpConfig       `json:"ftp"`
 }
 
@@ -41,9 +41,9 @@ type HikvisionConfig struct {
 	Cams    []hikvision.HikCamera `json:"cams"`
 }
 
-type AmcrestConfig struct {
-	Enabled bool                `json:"enabled"`
-	Cams    []amcrest.AmcCamera `json:"cams"`
+type DahuaConfig struct {
+	Enabled bool             `json:"enabled"`
+	Cams    []dahua.DhCamera `json:"cams"`
 }
 
 type FtpConfig struct {
@@ -68,7 +68,7 @@ func (c *Config) SetDefaults() {
 	viper.SetDefault("hisilicon.enabled", true)
 	viper.SetDefault("hisilicon.port", 15002)
 	viper.SetDefault("hikvision.enabled", false)
-	viper.SetDefault("amcrest.enabled", false)
+	viper.SetDefault("dahua.enabled", false)
 	viper.SetDefault("ftp.enabled", false)
 	viper.SetDefault("ftp.port", 21)
 	viper.SetDefault("ftp.allowFiles", true)
@@ -85,8 +85,8 @@ func (c *Config) SetDefaults() {
 	_ = viper.BindEnv("hisilicon.port", "HISILICON_PORT", "TCP_PORT")
 	_ = viper.BindEnv("hikvision.enabled", "HIKVISION_ENABLED")
 	_ = viper.BindEnv("hikvision.cams", "HIKVISION_CAMS")
-	_ = viper.BindEnv("amcrest.enabled", "AMCREST_ENABLED")
-	_ = viper.BindEnv("amcrest.cams", "AMCREST_CAMS")
+	_ = viper.BindEnv("dahua.enabled", "DAHUA_ENABLED")
+	_ = viper.BindEnv("dahua.cams", "DAHUA_CAMS")
 	_ = viper.BindEnv("ftp.enabled", "FTP_ENABLED")
 	_ = viper.BindEnv("ftp.port", "FTP_PORT")
 	_ = viper.BindEnv("ftp.allowFiles", "FTP_ALLOW_FILES")
@@ -113,7 +113,7 @@ func (c *Config) Load() *Config {
 		Webhooks:  WebhooksConfig{},
 		Hisilicon: HisiliconConfig{},
 		Hikvision: HikvisionConfig{},
-		Amcrest:   AmcrestConfig{},
+		Dahua:     DahuaConfig{},
 	}
 
 	if viper.IsSet("mqtt") {
@@ -134,10 +134,10 @@ func (c *Config) Load() *Config {
 			panic(fmt.Errorf("unable to decode hisilicon config, %v", err))
 		}
 	}
-	if viper.IsSet("amcrest") {
-		err := viper.Sub("amcrest").Unmarshal(&myConfig.Amcrest)
+	if viper.IsSet("dahua") {
+		err := viper.Sub("dahua").Unmarshal(&myConfig.Dahua)
 		if err != nil {
-			panic(fmt.Errorf("unable to decode amcrest config, %v", err))
+			panic(fmt.Errorf("unable to decode dahua config, %v", err))
 		}
 	}
 	if viper.IsSet("ftp") {
@@ -151,7 +151,7 @@ func (c *Config) Load() *Config {
 		panic("Both MQTT and Webhook buses are disabled. Nothing to do!")
 	}
 
-	if !myConfig.Hisilicon.Enabled && !myConfig.Hikvision.Enabled && !myConfig.Amcrest.Enabled && !myConfig.Ftp.Enabled {
+	if !myConfig.Hisilicon.Enabled && !myConfig.Hikvision.Enabled && !myConfig.Dahua.Enabled && !myConfig.Ftp.Enabled {
 		panic("No Servers are enabled. Nothing to do!")
 	}
 
@@ -200,12 +200,12 @@ func (c *Config) Load() *Config {
 		}
 	}
 
-	if viper.IsSet("amcrest.cams") {
-		amcrestCamsConfig := viper.Sub("amcrest.cams")
-		if amcrestCamsConfig != nil {
-			camConfigs := viper.GetStringMapString("amcrest.cams")
+	if viper.IsSet("dahua.cams") {
+		dahuaCamsConfig := viper.Sub("dahua.cams")
+		if dahuaCamsConfig != nil {
+			camConfigs := viper.GetStringMapString("dahua.cams")
 			for camName := range camConfigs {
-				camConfig := viper.Sub("amcrest.cams." + camName)
+				camConfig := viper.Sub("dahua.cams." + camName)
 				// CONSTRUCT CAMERA URL
 				url := ""
 				if camConfig.GetBool("https") {
@@ -215,7 +215,7 @@ func (c *Config) Load() *Config {
 				}
 				url += camConfig.GetString("address")
 
-				camera := amcrest.AmcCamera{
+				camera := dahua.DhCamera{
 					Debug:    myConfig.Debug,
 					Name:     camName,
 					Url:      url,
@@ -223,7 +223,7 @@ func (c *Config) Load() *Config {
 					Password: camConfig.GetString("password"),
 				}
 				if myConfig.Debug {
-					fmt.Printf("Added Amcrest camera:\n"+
+					fmt.Printf("Added Dahua camera:\n"+
 						"  name: %s \n"+
 						"  url: %s \n"+
 						"  username: %s \n"+
@@ -235,7 +235,7 @@ func (c *Config) Load() *Config {
 					)
 				}
 
-				myConfig.Amcrest.Cams = append(myConfig.Amcrest.Cams, camera)
+				myConfig.Dahua.Cams = append(myConfig.Dahua.Cams, camera)
 			}
 		}
 	}
@@ -249,7 +249,7 @@ func (c *Config) Printout() {
 		"    port: %s\n"+
 		"  Hikvision server enabled: %t\n"+
 		"    cams: %v\n"+
-		"  Amcrest server enabled: %t\n"+
+		"  Dahua server enabled: %t\n"+
 		"    cams: %v\n"+
 		"  FTP server enabled: %t\n"+
 		"    allow files: %t\n"+
@@ -267,8 +267,8 @@ func (c *Config) Printout() {
 		c.Hisilicon.Port,
 		c.Hikvision.Enabled,
 		len(c.Hikvision.Cams),
-		c.Amcrest.Enabled,
-		len(c.Amcrest.Cams),
+		c.Dahua.Enabled,
+		len(c.Dahua.Cams),
 		c.Ftp.Enabled,
 		c.Ftp.AllowFiles,
 		c.Ftp.RootPath,

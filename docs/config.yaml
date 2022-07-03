@@ -21,7 +21,7 @@ hisilicon:
   enabled: true
   port: 15002
 
-amcrest:
+dahua:
   enabled: true
   cams:
     myCam:
