@@ -7,9 +7,10 @@ Universal Alarm Server for all your IP cameras in one place!
 Integrates well with Home Assistant, Node-Red, etc. Runs great on Raspberry-Pi!
 
 Supported Cameras 📸:
-  - Hikvision
-  - Hisilicon
-  - Anything that can upload alarms to FTP
+  - Hikvision (Annke/Alarm.com/etc.)
+  - Dahua (Lorex/Amcrest/etc.)
+  - Hisilicon (any camera that uses XmEye)
+  - Any camera that can upload alarms to FTP
 
 Supported Delivery 📬:
   - MQTT
@@ -25,7 +26,7 @@ When alarm server is coming online, it will also send a status message to `/came
 
 #### HiSilicon
 
-This includes most of no-brand Chinese cameras that have "Alarm Server" feature.
+This includes most of no-brand Chinese cameras that use XmEye app and have "Alarm Server" feature.
 
 If your camera needs Internet Explorer to access its Web Interface ([here's a picture!](docs/hisilicon.jpg)) and would not work in any other browser - that's the server you need. These cameras are all made by HiSilicon and sold under hundreds of different names.
 
@@ -36,7 +37,21 @@ hisilicon:
   enabled: true  # if false, will not listen for alarms from hisilicon cams  
   port: 15002    # has to be the same in cameras' settings
 ```
- 
+
+#### Dahua
+
+Dahua is an OEM company that makes cameras for various popular brands. See the list of [OEM Dahua camera manufacturers](https://ipvm.com/reports/dahua-oem) to find if your cameras should be configured as Dahua in Alarm Server.
+
+```yaml
+dahua:
+  enabled: true              # if not enabled, it won't connect to any dahua cams
+  cams:
+    myCam:                   # name of your camera
+      address: 192.168.1.69  # ip address or domain name
+      username: admin        # username that you use to log in to camera's web panel 
+      password: admin1234    # password that you use to log in to camera's web panel
+```
+
 #### Hikvision
 
 Alarm Server uses HTTP streaming to connect to each camera individually and subscribe to all the events.
