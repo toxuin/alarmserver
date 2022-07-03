@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/spf13/viper"
+	"github.com/toxuin/alarmserver/servers/dahua"
 	"github.com/toxuin/alarmserver/servers/hikvision"
 )
 
@@ -12,6 +13,7 @@ type Config struct {
 	Webhooks  WebhooksConfig  `json:"webhooks"`
 	Hisilicon HisiliconConfig `json:"hisilicon"`
 	Hikvision HikvisionConfig `json:"hikvision"`
+	Dahua     DahuaConfig     `json:"dahua"`
 	Ftp       FtpConfig       `json:"ftp"`
 }
 
@@ -46,6 +48,11 @@ type HikvisionConfig struct {
 	Cams    []hikvision.HikCamera `json:"cams"`
 }
 
+type DahuaConfig struct {
+	Enabled bool             `json:"enabled"`
+	Cams    []dahua.DhCamera `json:"cams"`
+}
+
 type FtpConfig struct {
 	Enabled    bool   `json:"enabled"`
 	Port       int    `json:"port"`
@@ -69,6 +76,7 @@ func (c *Config) SetDefaults() {
 	viper.SetDefault("hisilicon.enabled", true)
 	viper.SetDefault("hisilicon.port", 15002)
 	viper.SetDefault("hikvision.enabled", false)
+	viper.SetDefault("dahua.enabled", false)
 	viper.SetDefault("ftp.enabled", false)
 	viper.SetDefault("ftp.port", 21)
 	viper.SetDefault("ftp.allowFiles", true)
@@ -84,7 +92,9 @@ func (c *Config) SetDefaults() {
 	_ = viper.BindEnv("hisilicon.enabled", "HISILICON_ENABLED")
 	_ = viper.BindEnv("hisilicon.port", "HISILICON_PORT", "TCP_PORT")
 	_ = viper.BindEnv("hikvision.enabled", "HIKVISION_ENABLED")
-	_ = viper.BindEnv("hikvision.cams", "HIKVISION_ENABLED")
+	_ = viper.BindEnv("hikvision.cams", "HIKVISION_CAMS")
+	_ = viper.BindEnv("dahua.enabled", "DAHUA_ENABLED")
+	_ = viper.BindEnv("dahua.cams", "DAHUA_CAMS")
 	_ = viper.BindEnv("ftp.enabled", "FTP_ENABLED")
 	_ = viper.BindEnv("ftp.port", "FTP_PORT")
 	_ = viper.BindEnv("ftp.allowFiles", "FTP_ALLOW_FILES")
@@ -114,6 +124,9 @@ func (c *Config) Load() *Config {
 		Hikvision: HikvisionConfig{
 			Enabled: viper.GetBool("hikvision.enabled"),
 		},
+		Dahua: DahuaConfig{
+			Enabled: viper.GetBool("dahua.enabled"),
+		},
 	}
 
 	if viper.IsSet("mqtt") {
@@ -134,6 +147,12 @@ func (c *Config) Load() *Config {
 			panic(fmt.Errorf("unable to decode hisilicon config, %v", err))
 		}
 	}
+	if viper.IsSet("dahua") {
+		err := viper.Sub("dahua").Unmarshal(&myConfig.Dahua)
+		if err != nil {
+			panic(fmt.Errorf("unable to decode dahua config, %v", err))
+		}
+	}
 	if viper.IsSet("ftp") {
 		err := viper.Sub("ftp").Unmarshal(&myConfig.Ftp)
 		if err != nil {
@@ -145,7 +164,7 @@ func (c *Config) Load() *Config {
 		panic("Both MQTT and Webhook buses are disabled. Nothing to do!")
 	}
 
-	if !myConfig.Hisilicon.Enabled && !myConfig.Hikvision.Enabled && !myConfig.Ftp.Enabled {
+	if !myConfig.Hisilicon.Enabled && !myConfig.Hikvision.Enabled && !myConfig.Dahua.Enabled && !myConfig.Ftp.Enabled {
 		panic("No Servers are enabled. Nothing to do!")
 	}
 
@@ -203,6 +222,8 @@ func (c *Config) Printout() {
 		"    port: %s\n"+
 		"  SERVER: Hikvision - enabled: %t\n"+
 		"    camera count: %d\n"+
+		"  Dahua server enabled: %t\n"+
+		"    cams: %v\n"+
 		"  SERVER: FTP - enabled: %t\n"+
 		"    port: %d\n"+
 		"    files allowed: %t\n"+
@@ -220,6 +241,8 @@ func (c *Config) Printout() {
 		c.Hisilicon.Port,
 		c.Hikvision.Enabled,
 		len(c.Hikvision.Cams),
+		c.Dahua.Enabled,
+		len(c.Dahua.Cams),
 		c.Ftp.Enabled,
 		c.Ftp.Port,
 		c.Ftp.AllowFiles,

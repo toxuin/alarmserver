@@ -21,6 +21,15 @@ hisilicon:
   enabled: true
   port: 15002
 
+dahua:
+  enabled: true
+  cams:
+    myCam:
+      address: 192.168.1.13
+      https: false
+      username: admin
+      password: admin1234
+
 ftp:
   enabled: true
   port: 21
