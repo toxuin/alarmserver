@@ -124,7 +124,7 @@ func (c *Config) Load() *Config {
 		Hikvision: HikvisionConfig{
 			Enabled: viper.GetBool("hikvision.enabled"),
 		},
-		Dahua:     DahuaConfig{
+		Dahua: DahuaConfig{
 			Enabled: viper.GetBool("dahua.enabled"),
 		},
 	}
@@ -246,6 +246,7 @@ func (c *Config) Printout() {
 		c.Ftp.Enabled,
 		c.Ftp.Port,
 		c.Ftp.AllowFiles,
+		c.Ftp.Password != "",
 		c.Ftp.RootPath,
 		c.Mqtt.Enabled,
 		c.Mqtt.Port,
