@@ -9,7 +9,10 @@ import (
 	"github.com/toxuin/alarmserver/servers/ftp"
 	"github.com/toxuin/alarmserver/servers/hikvision"
 	"github.com/toxuin/alarmserver/servers/hisilicon"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 )
 
 var config *conf.Config
@@ -113,4 +116,9 @@ func main() {
 	}
 
 	processesWaitGroup.Wait()
+
+	// START INFINITE LOOP WAITING FOR SERVERS
+	exitSignal := make(chan os.Signal)
+	signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
+	<-exitSignal
 }

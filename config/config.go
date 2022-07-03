@@ -27,8 +27,15 @@ type MqttConfig struct {
 }
 
 type WebhooksConfig struct {
-	Enabled bool     `json:"enabled"`
-	Urls    []string `json:"urls"`
+	Enabled bool            `json:"enabled"`
+	Items   []WebhookConfig `json:"items"`
+	Urls    []string        `json:"urls"`
+}
+
+type WebhookConfig struct {
+	Url     string   `json:"url"`
+	Method  string   `json:"method"`
+	Headers []string `json:"headers"`
 }
 
 type HisiliconConfig struct {
@@ -58,6 +65,7 @@ func (c *Config) SetDefaults() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
+	viper.AddConfigPath("./config/")
 
 	viper.SetDefault("debug", false)
 	viper.SetDefault("mqtt.port", 1883)
@@ -96,6 +104,7 @@ func (c *Config) SetDefaults() {
 	err := viper.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			fmt.Println("Config file not found, writing default config...")
 			err := viper.SafeWriteConfig()
 			if err != nil {
 				panic(fmt.Errorf("error saving default config file: %s \n", err))
@@ -112,8 +121,12 @@ func (c *Config) Load() *Config {
 		Mqtt:      MqttConfig{},
 		Webhooks:  WebhooksConfig{},
 		Hisilicon: HisiliconConfig{},
-		Hikvision: HikvisionConfig{},
-		Dahua:     DahuaConfig{},
+		Hikvision: HikvisionConfig{
+			Enabled: viper.GetBool("hikvision.enabled"),
+		},
+		Dahua:     DahuaConfig{
+			Enabled: viper.GetBool("dahua.enabled"),
+		},
 	}
 
 	if viper.IsSet("mqtt") {
@@ -200,69 +213,30 @@ func (c *Config) Load() *Config {
 		}
 	}
 
-	if viper.IsSet("dahua.cams") {
-		dahuaCamsConfig := viper.Sub("dahua.cams")
-		if dahuaCamsConfig != nil {
-			camConfigs := viper.GetStringMapString("dahua.cams")
-			for camName := range camConfigs {
-				camConfig := viper.Sub("dahua.cams." + camName)
-				// CONSTRUCT CAMERA URL
-				url := ""
-				if camConfig.GetBool("https") {
-					url += "https://"
-				} else {
-					url += "http://"
-				}
-				url += camConfig.GetString("address")
-
-				camera := dahua.DhCamera{
-					Debug:    myConfig.Debug,
-					Name:     camName,
-					Url:      url,
-					Username: camConfig.GetString("username"),
-					Password: camConfig.GetString("password"),
-				}
-				if myConfig.Debug {
-					fmt.Printf("Added Dahua camera:\n"+
-						"  name: %s \n"+
-						"  url: %s \n"+
-						"  username: %s \n"+
-						"  password set: %t\n",
-						camera.Name,
-						camera.Url,
-						camera.Username,
-						camera.Password != "",
-					)
-				}
-
-				myConfig.Dahua.Cams = append(myConfig.Dahua.Cams, camera)
-			}
-		}
-	}
-
 	return &myConfig
 }
 
 func (c *Config) Printout() {
 	fmt.Printf("CONFIG:\n"+
-		"  Hisilicon server enabled: %t\n"+
+		"  SERVER: Hisilicon - enabled: %t\n"+
 		"    port: %s\n"+
-		"  Hikvision server enabled: %t\n"+
-		"    cams: %v\n"+
+		"  SERVER: Hikvision - enabled: %t\n"+
+		"    camera count: %d\n"+
 		"  Dahua server enabled: %t\n"+
 		"    cams: %v\n"+
-		"  FTP server enabled: %t\n"+
-		"    allow files: %t\n"+
+		"  SERVER: FTP - enabled: %t\n"+
+		"    port: %d\n"+
+		"    files allowed: %t\n"+
+		"    password set: %t\n"+
 		"    root path: %s\n"+
-		"    port: %v\n"+
-		"  Webhooks bus enabled: %t\n"+
-		"    URLs: %v\n"+
-		"  MQTT bus enabled: %t\n"+
+		"  BUS: MQTT - enabled: %t\n"+
 		"    port: %s\n"+
-		"    root topic: %s\n"+
-		"    server address: %s\n"+
+		"    topicRoot: %s\n"+
+		"    server: %s\n"+
 		"    username: %s\n"+
-		"    password set: %t\n",
+		"    password set: %t\n"+
+		"  BUS: Webhooks - enabled: %t\n"+
+		"    count: %d\n",
 		c.Hisilicon.Enabled,
 		c.Hisilicon.Port,
 		c.Hikvision.Enabled,
@@ -270,16 +244,16 @@ func (c *Config) Printout() {
 		c.Dahua.Enabled,
 		len(c.Dahua.Cams),
 		c.Ftp.Enabled,
+		c.Ftp.Port,
 		c.Ftp.AllowFiles,
 		c.Ftp.RootPath,
-		c.Ftp.Port,
-		c.Webhooks.Enabled,
-		len(c.Webhooks.Urls),
 		c.Mqtt.Enabled,
 		c.Mqtt.Port,
 		c.Mqtt.TopicRoot,
 		c.Mqtt.Server,
 		c.Mqtt.Username,
 		c.Mqtt.Password != "",
+		c.Webhooks.Enabled,
+		len(c.Webhooks.Items)+len(c.Webhooks.Urls),
 	)
 }
