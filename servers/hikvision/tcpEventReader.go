@@ -80,9 +80,6 @@ func (eventReader *TcpEventReader) ReadEvents(camera *HikCamera, channel chan<- 
 
 		// READ HTTP HEADERS
 		var headers = make(map[string]string)
-		if eventReader.Debug {
-			fmt.Println("HEADERS:")
-		}
 		for {
 			headerLine, err := textConn.ReadLine()
 			if err == io.EOF {
@@ -101,6 +98,10 @@ func (eventReader *TcpEventReader) ReadEvents(camera *HikCamera, channel chan<- 
 			headerKey := strings.SplitN(headerLine, ": ", 2)[0]
 			headerValue := strings.SplitN(headerLine, ": ", 2)[1]
 			headers[headerKey] = headerValue
+		}
+		if eventReader.Debug {
+			fmt.Println("HIK-TCP: HEADERS:")
+			fmt.Println(headers)
 		}
 
 		// PRINT ERROR

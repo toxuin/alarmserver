@@ -4,7 +4,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"mime"
 	"mime/multipart"
@@ -21,7 +20,7 @@ func (eventReader *HttpEventReader) ReadEvents(camera *HikCamera, channel chan<-
 		eventReader.client = &http.Client{}
 	}
 
-	request, err := http.NewRequest("GET", camera.Url+"/Event/notification/alertStream", nil)
+	request, err := http.NewRequest("GET", camera.Url+"Event/notification/alertStream", nil)
 	if err != nil {
 		fmt.Printf("HIK: Error: Could not connect to camera %s\n", camera.Name)
 		fmt.Println("HIK: Error", err)
@@ -60,7 +59,7 @@ func (eventReader *HttpEventReader) ReadEvents(camera *HikCamera, channel chan<-
 			fmt.Println(err)
 			continue
 		}
-		body, err := ioutil.ReadAll(part)
+		body, err := io.ReadAll(part)
 		if err != nil {
 			fmt.Println(err)
 			continue

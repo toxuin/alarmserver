@@ -62,4 +62,7 @@ func (mqtt *Bus) SendMessage(topic string, payload interface{}) {
 	if token := mqtt.client.Publish(topic, 0, false, payload); token.Wait() && token.Error() != nil {
 		fmt.Printf("MQTT ERROR, %s\n", token.Error())
 	}
+	if mqtt.Debug {
+		fmt.Printf("MQTT: Sent message to %s\n", topic)
+	}
 }

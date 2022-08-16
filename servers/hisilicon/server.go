@@ -71,6 +71,10 @@ func (server *Server) handleTcpConnection(conn net.Conn) {
 	}
 	if dataMap["Address"] != nil {
 		hexAddrStr := fmt.Sprintf("%v", dataMap["Address"])
+		if len(hexAddrStr) < 2 {
+			fmt.Printf("HISI: BAD DEVICE ADDRESS: %s\n", hexAddrStr)
+			return
+		}
 		dataMap["ipAddr"] = hexIpToCIDR(hexAddrStr)
 	}
 
