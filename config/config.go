@@ -147,12 +147,6 @@ func (c *Config) Load() *Config {
 			panic(fmt.Errorf("unable to decode hisilicon config, %v", err))
 		}
 	}
-	if viper.IsSet("dahua") {
-		err := viper.Sub("dahua").Unmarshal(&myConfig.Dahua)
-		if err != nil {
-			panic(fmt.Errorf("unable to decode dahua config, %v", err))
-		}
-	}
 	if viper.IsSet("ftp") {
 		err := viper.Sub("ftp").Unmarshal(&myConfig.Ftp)
 		if err != nil {
@@ -213,6 +207,42 @@ func (c *Config) Load() *Config {
 		}
 	}
 
+	if viper.IsSet("dahua.cams") {
+		camConfigs := viper.GetStringMapString("dahua.cams")
+		for camName := range camConfigs {
+			camConfig := viper.Sub("dahua.cams." + camName)
+			// CONSTRUCT CAMERA URL
+			url := ""
+			if camConfig.GetBool("https") {
+				url += "https://"
+			} else {
+				url += "http://"
+			}
+			url += camConfig.GetString("address")
+			camera := dahua.DhCamera{
+				Debug:    myConfig.Debug,
+				Name:     camName,
+				Url:      url,
+				Username: camConfig.GetString("username"),
+				Password: camConfig.GetString("password"),
+			}
+
+			if myConfig.Debug {
+				fmt.Printf("Added Dahua camera:\n"+
+					"  name: %s \n"+
+					"  url: %s \n"+
+					"  username: %s \n"+
+					"  password set: %t\n",
+					camera.Name,
+					camera.Url,
+					camera.Username,
+					camera.Password != "",
+				)
+			}
+
+			myConfig.Dahua.Cams = append(myConfig.Dahua.Cams, camera)
+		}
+	}
 	return &myConfig
 }
 
@@ -222,8 +252,8 @@ func (c *Config) Printout() {
 		"    port: %s\n"+
 		"  SERVER: Hikvision - enabled: %t\n"+
 		"    camera count: %d\n"+
-		"  Dahua server enabled: %t\n"+
-		"    cams: %v\n"+
+		"  SERVER Dahua enabled: %t\n"+
+		"    camera count: %d\n"+
 		"  SERVER: FTP - enabled: %t\n"+
 		"    port: %d\n"+
 		"    files allowed: %t\n"+
