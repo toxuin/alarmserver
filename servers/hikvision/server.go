@@ -3,7 +3,9 @@ package hikvision
 import (
 	"encoding/xml"
 	"fmt"
+	"github.com/icholy/digest"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -83,9 +85,47 @@ func (server *Server) addCamera(waitGroup *sync.WaitGroup, camera *HikCamera, ev
 		return
 	}
 	if response.StatusCode == 401 {
+		if response.Header.Get("WWW-Authenticate") == "" {
+			// BAD PASSWORD
+			fmt.Printf("HIK: UNKNOWN AUTH METHOD FOR CAMERA %s! SKIPPING...", camera.Name)
+			return
+		}
+		authMethod := strings.Split(response.Header.Get("WWW-Authenticate"), " ")[0]
+		if authMethod == "Basic" {
+			// BAD PASSWORD
+			fmt.Printf("HIK: BAD PASSWORD FOR CAMERA %s! SKIPPING...", camera.Name)
+			return
+		}
+
+		// TRY ANOTHER TIME WITH DIGEST TRANSPORT
+		client.Transport = &digest.Transport{
+			Username: camera.Username,
+			Password: camera.Password,
+		}
+		response, err := client.Do(request)
+		if err != nil || response.StatusCode == 401 {
+			if err != nil {
+				fmt.Println(err)
+			}
+			// BAD PASSWORD
+			fmt.Printf("HIK: BAD PASSWORD FOR CAMERA %s! SKIPPING...", camera.Name)
+			return
+		}
+
 		camera.AuthMethod = Digest
+		if server.Debug {
+			fmt.Println("HIK: USING DIGEST AUTH")
+			if camera.BrokenHttp {
+				fmt.Println("HIK: WARNING: rawTCP CONFIG VALUE Digest AUTH COMBO IS NOT SUPPORTED!")
+				fmt.Println("    PLEASE OPEN A GITHUB ISSUE AT https://github.com/toxuin/alarmserver/issues")
+				fmt.Println("    AND INCLUDE YOUR CAMERA MODEL. THANK YOU!")
+			}
+		}
 	} else {
 		camera.AuthMethod = Basic
+		if server.Debug {
+			fmt.Println("HIK: USING BASIC AUTH")
+		}
 	}
 
 	go func() {
