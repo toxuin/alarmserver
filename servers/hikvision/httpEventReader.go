@@ -3,6 +3,7 @@ package hikvision
 import (
 	"encoding/xml"
 	"fmt"
+	"github.com/icholy/digest"
 	"io"
 	"log"
 	"mime"
@@ -18,6 +19,12 @@ type HttpEventReader struct {
 func (eventReader *HttpEventReader) ReadEvents(camera *HikCamera, channel chan<- HikEvent, callback func()) {
 	if eventReader.client == nil {
 		eventReader.client = &http.Client{}
+		if camera.AuthMethod == Digest {
+			eventReader.client.Transport = &digest.Transport{
+				Username: camera.Username,
+				Password: camera.Password,
+			}
+		}
 	}
 
 	request, err := http.NewRequest("GET", camera.Url+"Event/notification/alertStream", nil)
@@ -27,7 +34,9 @@ func (eventReader *HttpEventReader) ReadEvents(camera *HikCamera, channel chan<-
 		callback()
 		return
 	}
-	request.SetBasicAuth(camera.Username, camera.Password)
+	if camera.AuthMethod == Basic {
+		request.SetBasicAuth(camera.Username, camera.Password)
+	}
 
 	response, err := eventReader.client.Do(request)
 	if err != nil {
@@ -35,6 +44,11 @@ func (eventReader *HttpEventReader) ReadEvents(camera *HikCamera, channel chan<-
 		fmt.Println(err)
 		return
 	}
+
+	if response.StatusCode != 200 {
+		fmt.Printf("HIK: BAD STATUS %d", response.StatusCode)
+	}
+	defer response.Body.Close()
 
 	// FIGURE OUT MULTIPART BOUNDARY
 	mediaType, params, err := mime.ParseMediaType(response.Header.Get("Content-Type"))

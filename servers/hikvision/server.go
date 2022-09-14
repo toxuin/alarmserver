@@ -3,8 +3,16 @@ package hikvision
 import (
 	"encoding/xml"
 	"fmt"
+	"net/http"
 	"sync"
 	"time"
+)
+
+type HttpAuthMethod int
+
+const (
+	Basic HttpAuthMethod = iota
+	Digest
 )
 
 type HikCamera struct {
@@ -14,6 +22,7 @@ type HikCamera struct {
 	Password    string `json:"password"`
 	EventReader HikEventReader
 	BrokenHttp  bool
+	AuthMethod  HttpAuthMethod
 }
 
 type HikEvent struct {
@@ -56,6 +65,27 @@ func (server *Server) addCamera(waitGroup *sync.WaitGroup, camera *HikCamera, ev
 	}
 	if server.Debug {
 		fmt.Printf("HIK: Adding camera %s: %s\n", camera.Name, camera.Url)
+	}
+
+	// PROBE AUTH
+	client := &http.Client{}
+	request, err := http.NewRequest("GET", camera.Url+"System/status", nil)
+	if err != nil {
+		fmt.Printf("HIK: Error probing auth method for camera %s\n", camera.Name)
+		fmt.Println(err)
+		return
+	}
+	request.SetBasicAuth(camera.Username, camera.Password)
+	response, err := client.Do(request)
+	if err != nil {
+		fmt.Printf("HIK: Error probing HTTP Auth method for camera %s\n", camera.Name)
+		fmt.Println(err)
+		return
+	}
+	if response.StatusCode == 401 {
+		camera.AuthMethod = Digest
+	} else {
+		camera.AuthMethod = Basic
 	}
 
 	go func() {

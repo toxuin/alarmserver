@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.4.1
+	github.com/icholy/digest v0.1.15
 	github.com/spf13/viper v1.12.0
 	goftp.io/server/v2 v2.0.0
 )
