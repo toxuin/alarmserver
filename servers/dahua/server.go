@@ -2,8 +2,8 @@ package dahua
 
 import (
 	"fmt"
+	"github.com/icholy/digest"
 	"io"
-	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -50,7 +50,9 @@ func (camera *DhCamera) readEvents(channel chan<- DhEvent, callback func()) {
 		callback()
 		return
 	}
-	request.SetBasicAuth(camera.Username, camera.Password)
+	if camera.client.Transport == nil { // BASIC AUTH
+		request.SetBasicAuth(camera.Username, camera.Password)
+	}
 
 	response, err := camera.client.Do(request)
 	if err != nil {
@@ -89,7 +91,7 @@ func (camera *DhCamera) readEvents(channel chan<- DhEvent, callback func()) {
 			fmt.Println(err)
 			continue
 		}
-		body, err := ioutil.ReadAll(part)
+		body, err := io.ReadAll(part)
 		if err != nil {
 			fmt.Println(err)
 			continue
@@ -149,6 +151,55 @@ func (server *Server) addCamera(waitGroup *sync.WaitGroup, cam *DhCamera, channe
 
 	if cam.client == nil {
 		cam.client = &http.Client{}
+	}
+
+	// PROBE AUTH
+	request, err := http.NewRequest("GET", cam.Url+"/cgi-bin/eventManager.cgi?action=getConfig&name=General", nil)
+	if err != nil {
+		fmt.Printf("DAHUA: Error probing auth method for camera %s\n", cam.Name)
+		fmt.Println(err)
+		return
+	}
+	request.SetBasicAuth(cam.Username, cam.Password)
+	response, err := cam.client.Do(request)
+	if err != nil {
+		fmt.Printf("DAHUA: Error probing HTTP Auth method for camera %s\n", cam.Name)
+		fmt.Println(err)
+		return
+	}
+	if response.StatusCode == 401 {
+		if response.Header.Get("WWW-Authenticate") == "" {
+			// BAD PASSWORD
+			fmt.Printf("DAHUA: UNKNOWN AUTH METHOD FOR CAMERA %s! SKIPPING...", cam.Name)
+			return
+		}
+		authMethod := strings.Split(response.Header.Get("WWW-Authenticate"), " ")[0]
+		if authMethod == "Basic" {
+			// BAD PASSWORD
+			fmt.Printf("DAHUA: BAD PASSWORD FOR CAMERA %s! SKIPPING...", cam.Name)
+			return
+		}
+
+		// TRY ANOTHER TIME WITH DIGEST TRANSPORT
+		cam.client.Transport = &digest.Transport{
+			Username: cam.Username,
+			Password: cam.Password,
+		}
+		response, err := cam.client.Do(request)
+		if err != nil || response.StatusCode == 401 {
+			if err != nil {
+				fmt.Println(err)
+			}
+			// BAD PASSWORD
+			fmt.Printf("DAHUA: BAD PASSWORD FOR CAMERA %s! SKIPPING...", cam.Name)
+			return
+		}
+
+		if server.Debug {
+			fmt.Println("DAHUA: USING DIGEST AUTH")
+		}
+	} else if server.Debug {
+		fmt.Println("DAHUA: USING BASIC AUTH")
 	}
 
 	go func() {
