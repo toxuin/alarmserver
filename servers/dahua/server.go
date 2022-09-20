@@ -105,7 +105,6 @@ func (camera *DhCamera) readEvents(channel chan<- DhEvent, callback func()) {
 	multipartReader := multipart.NewReader(response.Body, multipartBoundary)
 	for {
 		part, err := multipartReader.NextPart()
-		contentLength, _ := strconv.Atoi(part.Header.Get("Content-Length"))
 		if err == io.EOF {
 			break
 		}
@@ -113,6 +112,7 @@ func (camera *DhCamera) readEvents(channel chan<- DhEvent, callback func()) {
 			fmt.Println(err)
 			continue
 		}
+		contentLength, _ := strconv.Atoi(part.Header.Get("Content-Length"))
 		body := make([]byte, contentLength)
 		_, err = part.Read(body)
 		if err != nil {

@@ -9,6 +9,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"strconv"
 )
 
 type HttpEventReader struct {
@@ -73,7 +74,9 @@ func (eventReader *HttpEventReader) ReadEvents(camera *HikCamera, channel chan<-
 			fmt.Println(err)
 			continue
 		}
-		body, err := io.ReadAll(part)
+		contentLength, _ := strconv.Atoi(part.Header.Get("Content-Length"))
+		body := make([]byte, contentLength)
+		_, err = part.Read(body)
 		if err != nil {
 			fmt.Println(err)
 			continue
