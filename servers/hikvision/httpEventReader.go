@@ -67,7 +67,7 @@ func (eventReader *HttpEventReader) ReadEvents(camera *HikCamera, channel chan<-
 	for {
 		part, err := multipartReader.NextPart()
 		if err == io.EOF {
-			return
+			break
 		}
 		if err != nil {
 			fmt.Println(err)

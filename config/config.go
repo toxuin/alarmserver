@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/toxuin/alarmserver/servers/dahua"
 	"github.com/toxuin/alarmserver/servers/hikvision"
+	"strings"
 )
 
 type Config struct {
@@ -219,12 +220,30 @@ func (c *Config) Load() *Config {
 				url += "http://"
 			}
 			url += camConfig.GetString("address")
+			var eventsFilter []string = nil
+			if camConfig.IsSet("events") {
+				allEvents := strings.Split(camConfig.GetString("events"), ",")
+				if len(allEvents) > 0 {
+					eventsFilter = make([]string, 0)
+					for _, eventName := range allEvents {
+						if eventName != "" {
+							eventsFilter = append(eventsFilter, strings.TrimSpace(eventName))
+						}
+					}
+				}
+			}
+			channel := ""
+			if camConfig.IsSet("channel") {
+				channel = camConfig.GetString("channel")
+			}
 			camera := dahua.DhCamera{
 				Debug:    myConfig.Debug,
 				Name:     camName,
 				Url:      url,
 				Username: camConfig.GetString("username"),
 				Password: camConfig.GetString("password"),
+				Channel:  channel,
+				Events:   eventsFilter,
 			}
 
 			if myConfig.Debug {

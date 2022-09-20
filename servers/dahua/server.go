@@ -15,10 +15,12 @@ import (
 
 type DhCamera struct {
 	Debug    bool
-	Name     string `json:"name"`
-	Url      string `json:"url"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Name     string   `json:"name"`
+	Url      string   `json:"url"`
+	Username string   `json:"username"`
+	Password string   `json:"password"`
+	Channel  string   `json:"channel"`
+	Events   []string `json:"events"`
 	client   *http.Client
 }
 
@@ -44,7 +46,16 @@ type Event struct {
 }
 
 func (camera *DhCamera) readEvents(channel chan<- DhEvent, callback func()) {
-	request, err := http.NewRequest("GET", camera.Url+"/cgi-bin/eventManager.cgi?action=attach&codes=[All]", nil)
+	eventUrlSuffix := "/cgi-bin/eventManager.cgi?action=attach&heartbeat=10"
+	if camera.Channel != "" {
+		eventUrlSuffix += "&channel=" + camera.Channel
+	}
+	if camera.Events != nil && len(camera.Events) > 0 {
+		eventUrlSuffix += "&codes=[" + strings.Join(camera.Events, ",") + "]"
+	} else {
+		eventUrlSuffix += "&codes=[All]"
+	}
+	request, err := http.NewRequest("GET", camera.Url+eventUrlSuffix, nil)
 	if err != nil {
 		fmt.Printf("DAHUA: Error: Could not connect to camera %s\n", camera.Name)
 		fmt.Println("DAHUA: Error", err)
@@ -94,14 +105,16 @@ func (camera *DhCamera) readEvents(channel chan<- DhEvent, callback func()) {
 	multipartReader := multipart.NewReader(response.Body, multipartBoundary)
 	for {
 		part, err := multipartReader.NextPart()
+		contentLength, _ := strconv.Atoi(part.Header.Get("Content-Length"))
 		if err == io.EOF {
-			return
+			break
 		}
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		body, err := io.ReadAll(part)
+		body := make([]byte, contentLength)
+		_, err = part.Read(body)
 		if err != nil {
 			fmt.Println(err)
 			continue
@@ -113,12 +126,15 @@ func (camera *DhCamera) readEvents(channel chan<- DhEvent, callback func()) {
 
 		// EXAMPLE: "Code=VideoMotion; action=Start; index=0\r\n\r\n"
 		line := strings.Trim(string(body), " \n\r")
-		items := strings.Split(line, "; ")
+		if line == "Heartbeat" {
+			continue
+		}
+		items := strings.Split(line, ";")
 		keyValues := make(map[string]string, len(items))
 		for _, item := range items {
 			parts := strings.Split(item, "=")
 			if len(parts) > 0 {
-				keyValues[parts[0]] = parts[1]
+				keyValues[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 			}
 		}
 		// EXAMPLE: { Code: VideoMotion, action: Start, index: 0 }

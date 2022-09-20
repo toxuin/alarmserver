@@ -29,6 +29,10 @@ dahua:
       https: false
       username: admin
       password: admin1234
+      # USE channel FOR NVRs TO SELECT THE CAMERA, IF NOT USED - DELETE OR COMMENT
+      channel: 1
+      # IF ALL EVENTS ARE NEEDED - DELETE OR COMMENT FOLLOWING LINE
+      events: VideoMotion,CrossLineDetection,AlarmLocal,VideoLoss,VideoBlind
 
 ftp:
   enabled: true
