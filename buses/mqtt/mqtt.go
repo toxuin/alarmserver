@@ -31,6 +31,7 @@ func (mqtt *Bus) Initialize(config config.MqttConfig) {
 
 	mqttOpts.OnConnect = func(client MQTT.Client) {
 		fmt.Printf("MQTT: CONNECTED TO %s\n", config.Server)
+		mqtt.SendMessage(config.TopicRoot+"/alarmserver", `{ "status": "up" }`)
 	}
 
 	mqttOpts.SetConnectionLostHandler(func(client MQTT.Client, err error) {
@@ -50,8 +51,6 @@ func (mqtt *Bus) Initialize(config config.MqttConfig) {
 	if token := mqtt.client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
-
-	mqtt.SendMessage(config.TopicRoot+"/alarmserver", `{ "status": "up" }`)
 }
 
 func (mqtt *Bus) SendMessage(topic string, payload interface{}) {
