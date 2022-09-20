@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/icholy/digest"
 	"io"
+	"log"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -43,7 +44,7 @@ type Event struct {
 }
 
 func (camera *DhCamera) readEvents(channel chan<- DhEvent, callback func()) {
-	request, err := http.NewRequest("GET", camera.Url+"/cgi-bin/eventManager.cgi?action=attach&codes=All", nil)
+	request, err := http.NewRequest("GET", camera.Url+"/cgi-bin/eventManager.cgi?action=attach&codes=[All]", nil)
 	if err != nil {
 		fmt.Printf("DAHUA: Error: Could not connect to camera %s\n", camera.Name)
 		fmt.Println("DAHUA: Error", err)
@@ -58,11 +59,20 @@ func (camera *DhCamera) readEvents(channel chan<- DhEvent, callback func()) {
 	if err != nil {
 		fmt.Printf("DAHUA: Error opening HTTP connection to camera %s\n", camera.Name)
 		fmt.Println(err)
+		callback()
 		return
 	}
+	defer response.Body.Close()
 
 	if response.StatusCode != 200 {
 		fmt.Printf("DAHUA: Warning: Status Code was not 200, but %v\n", response.StatusCode)
+		if camera.Debug { // DUMP BODY
+			body, err := io.ReadAll(response.Body)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			fmt.Println(string(body))
+		}
 	}
 
 	// FIGURE OUT MULTIPART BOUNDARY
@@ -154,7 +164,7 @@ func (server *Server) addCamera(waitGroup *sync.WaitGroup, cam *DhCamera, channe
 	}
 
 	// PROBE AUTH
-	request, err := http.NewRequest("GET", cam.Url+"/cgi-bin/eventManager.cgi?action=getConfig&name=General", nil)
+	request, err := http.NewRequest("GET", cam.Url+"/cgi-bin/configManager.cgi?action=getConfig&name=General", nil)
 	if err != nil {
 		fmt.Printf("DAHUA: Error probing auth method for camera %s\n", cam.Name)
 		fmt.Println(err)
@@ -167,6 +177,7 @@ func (server *Server) addCamera(waitGroup *sync.WaitGroup, cam *DhCamera, channe
 		fmt.Println(err)
 		return
 	}
+	defer response.Body.Close()
 	if response.StatusCode == 401 {
 		if response.Header.Get("WWW-Authenticate") == "" {
 			// BAD PASSWORD
@@ -213,7 +224,7 @@ func (server *Server) addCamera(waitGroup *sync.WaitGroup, cam *DhCamera, channe
 			if done {
 				break
 			}
-			go cam.readEvents(channel, callback)
+			cam.readEvents(channel, callback)
 		}
 		fmt.Printf("DAHUA: Closed connection to camera %s\n", cam.Name)
 	}()
