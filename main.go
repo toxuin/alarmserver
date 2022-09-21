@@ -47,12 +47,12 @@ func main() {
 		}
 	}
 
-	messageHandler := func(topic string, data string) {
+	messageHandler := func(cameraName string, eventType string, extra string) {
 		if config.Mqtt.Enabled {
-			mqttBus.SendMessage(config.Mqtt.TopicRoot+"/"+topic, data)
+			mqttBus.SendMessage(config.Mqtt.TopicRoot+"/"+cameraName+"/"+eventType, extra)
 		}
 		if config.Webhooks.Enabled {
-			webhookBus.SendMessage(topic, data)
+			webhookBus.SendMessage(cameraName, eventType, extra)
 		}
 	}
 

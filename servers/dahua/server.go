@@ -28,7 +28,7 @@ type Server struct {
 	Debug          bool
 	WaitGroup      *sync.WaitGroup
 	Cameras        *[]DhCamera
-	MessageHandler func(topic string, data string)
+	MessageHandler func(cameraName string, eventType string, extra string)
 }
 
 type DhEvent struct {
@@ -254,8 +254,8 @@ func (server *Server) Start() {
 
 	if server.MessageHandler == nil {
 		fmt.Println("DAHUA: Message handler is not set for Dahua cams - that's probably not what you want")
-		server.MessageHandler = func(topic string, data string) {
-			fmt.Printf("DAHUA: Lost alarm: %s: %s\n", topic, data)
+		server.MessageHandler = func(cameraName string, eventType string, extra string) {
+			fmt.Printf("DAHUA: Lost alarm: %s - %s: %s\n", cameraName, eventType, extra)
 		}
 	}
 
@@ -277,7 +277,7 @@ func (server *Server) Start() {
 
 		for {
 			event := <-channel
-			go server.MessageHandler(event.Camera.Name+"/"+event.Type, event.Message)
+			go server.MessageHandler(event.Camera.Name, event.Type, event.Message)
 		}
 	}(&waitGroup, eventChannel)
 

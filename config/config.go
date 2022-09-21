@@ -34,9 +34,10 @@ type WebhooksConfig struct {
 }
 
 type WebhookConfig struct {
-	Url     string   `json:"url"`
-	Method  string   `json:"method"`
-	Headers []string `json:"headers"`
+	Url          string   `json:"url"`
+	Method       string   `json:"method"`
+	Headers      []string `json:"headers"`
+	BodyTemplate string   `json:"bodyTemplate"`
 }
 
 type HisiliconConfig struct {

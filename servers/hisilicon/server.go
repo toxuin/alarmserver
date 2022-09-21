@@ -41,7 +41,7 @@ type Server struct {
 	Debug          bool
 	WaitGroup      *sync.WaitGroup
 	Port           string
-	MessageHandler func(topic string, data string)
+	MessageHandler func(cameraName string, eventType string, extra string)
 }
 
 func (server *Server) handleTcpConnection(conn net.Conn) {
@@ -93,7 +93,7 @@ func (server *Server) handleTcpConnection(conn net.Conn) {
 	serialId := fmt.Sprintf("%v", dataMap["SerialID"])
 	event := fmt.Sprintf("%v", dataMap["Event"])
 
-	server.MessageHandler(serialId+"/"+event, string(jsonBytes))
+	server.MessageHandler(serialId, event, string(jsonBytes))
 }
 
 func (server *Server) Start() {
@@ -102,8 +102,8 @@ func (server *Server) Start() {
 	}
 	if server.MessageHandler == nil {
 		fmt.Println("HISI: Message handler is not set for HiSilicon cams - that's probably not what you want")
-		server.MessageHandler = func(topic string, data string) {
-			fmt.Printf("HISI: Lost alarm: %s: %s\n", topic, data)
+		server.MessageHandler = func(cameraName string, eventType string, extra string) {
+			fmt.Printf("HISI: Lost alarm: %s - %s: %s\n", cameraName, eventType, extra)
 		}
 	}
 

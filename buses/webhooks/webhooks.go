@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/toxuin/alarmserver/config"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
+	"text/template"
 )
 
 type Bus struct {
@@ -17,8 +18,9 @@ type Bus struct {
 }
 
 type WebhookPayload struct {
-	Topic string `json:"topic"`
-	Data  string `json:"data"`
+	CameraName string `json:"cameraName"`
+	EventType  string `json:"eventType"`
+	Extra      string `json:"extra"`
 }
 
 func (webhooks *Bus) Initialize(conf config.WebhooksConfig) {
@@ -42,9 +44,9 @@ func (webhooks *Bus) Initialize(conf config.WebhooksConfig) {
 	}
 }
 
-func (webhooks *Bus) SendMessage(topic string, data string) {
+func (webhooks *Bus) SendMessage(cameraName string, eventType string, extra string) {
 	for _, webhook := range webhooks.webhooks {
-		payload := WebhookPayload{Topic: topic, Data: data}
+		payload := WebhookPayload{CameraName: cameraName, EventType: eventType, Extra: extra}
 		go webhooks.send(webhook, payload)
 	}
 }
@@ -56,7 +58,57 @@ func (webhooks *Bus) send(webhook config.WebhookConfig, payload WebhookPayload) 
 		return
 	}
 
-	request, err := http.NewRequest(webhook.Method, webhook.Url, bytes.NewBuffer(payloadJson))
+	var templateVars = map[string]interface{}{
+		"Camera": payload.CameraName,
+		"Event":  payload.EventType,
+		"Extra":  payload.Extra,
+	}
+
+	// PARSE WEBHOOK URL AS TEMPLATE
+	urlTemplate, err := template.New("webhookUrl").Parse(webhook.Url)
+	if err != nil {
+		fmt.Printf("WEBHOOKS: Error parsing webhook URL as template: %s\n", webhook.Url)
+		if webhooks.Debug {
+			fmt.Println("Webhooks: Error", err)
+		}
+		return
+	}
+	var urlBuffer bytes.Buffer
+	err = urlTemplate.Execute(&urlBuffer, templateVars)
+	if err != nil {
+		fmt.Printf("WEBHOOKS: Error rendering webhook URL as template: %s\n", webhook.Url)
+		if webhooks.Debug {
+			fmt.Println("Webhooks: Error", err)
+		}
+		return
+	}
+	url := urlBuffer.String()
+
+	// PARSE BODY AS TEMPLATE
+	body := bytes.NewBuffer(payloadJson)
+	if webhook.BodyTemplate != "" {
+		bodyTemplate, err := template.New("payload").Parse(webhook.BodyTemplate)
+		if err != nil {
+			fmt.Printf("WEBHOOKS: Error parsing webhook body as template: %s\n", webhook.Url)
+			if webhooks.Debug {
+				fmt.Println("Webhooks: Error", err)
+			}
+			return
+		}
+
+		var bodyBuffer bytes.Buffer
+		err = bodyTemplate.Execute(&bodyBuffer, templateVars)
+		if err != nil {
+			fmt.Printf("WEBHOOKS: Error rendering webhook body as template: %s\n", webhook.Url)
+			if webhooks.Debug {
+				fmt.Println("Webhooks: Error", err)
+			}
+			return
+		}
+		body = &bodyBuffer
+	}
+
+	request, err := http.NewRequest(webhook.Method, url, body)
 	if err != nil {
 		fmt.Printf("WEBHOOKS: Error creating %s request to %s\n", webhook.Method, webhook.Url)
 		if webhooks.Debug {
@@ -93,7 +145,7 @@ func (webhooks *Bus) send(webhook config.WebhookConfig, payload WebhookPayload) 
 		)
 	}
 	if webhooks.Debug {
-		bodyBytes, _ := ioutil.ReadAll(response.Body)
+		bodyBytes, _ := io.ReadAll(response.Body)
 		bodyStr := string(bodyBytes)
 		if len(bodyStr) == 0 {
 			bodyStr = "*empty*"

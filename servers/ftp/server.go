@@ -13,7 +13,7 @@ type Server struct {
 	AllowFiles     bool
 	RootPath       string
 	Password       string
-	MessageHandler func(topic string, data string)
+	MessageHandler func(cameraName string, eventType string, extra string)
 }
 
 type Event struct {
@@ -25,8 +25,8 @@ type Event struct {
 func (serv *Server) Start() {
 	if serv.MessageHandler == nil {
 		fmt.Println("FTP: Message handler is not set for FTP server - that's probably not what you want")
-		serv.MessageHandler = func(topic string, data string) {
-			fmt.Printf("FTP: Lost alarm: %s: %s\n", topic, data)
+		serv.MessageHandler = func(cameraName string, eventType string, extra string) {
+			fmt.Printf("FTP: Lost alarm: %s - %s: %s\n", cameraName, eventType, extra)
 		}
 	}
 	// DEFAULT FTP PASSWORD
@@ -44,7 +44,7 @@ func (serv *Server) Start() {
 		go func(channel <-chan Event) {
 			for {
 				event := <-channel
-				go serv.MessageHandler(event.CameraName+"/"+event.Type, event.Message)
+				go serv.MessageHandler(event.CameraName, event.Type, event.Message)
 			}
 		}(eventChannel)
 

@@ -37,7 +37,7 @@ type Server struct {
 	Debug          bool
 	WaitGroup      *sync.WaitGroup
 	Cameras        *[]HikCamera
-	MessageHandler func(topic string, data string)
+	MessageHandler func(cameraName string, eventType string, extra string)
 }
 
 type XmlEvent struct {
@@ -153,8 +153,8 @@ func (server *Server) Start() {
 
 	if server.MessageHandler == nil {
 		fmt.Println("HIK: Message handler is not set for Hikvision cams - that's probably not what you want")
-		server.MessageHandler = func(topic string, data string) {
-			fmt.Printf("HIK: Lost alarm: %s: %s\n", topic, data)
+		server.MessageHandler = func(cameraName string, eventType string, extra string) {
+			fmt.Printf("HIK: Lost alarm: %s - %s: %s\n", cameraName, eventType, extra)
 		}
 	}
 
@@ -176,7 +176,7 @@ func (server *Server) Start() {
 		server.WaitGroup.Add(1)
 		for {
 			event := <-channel
-			go server.MessageHandler(event.Camera.Name+"/"+event.Type, event.Message)
+			go server.MessageHandler(event.Camera.Name, event.Type, event.Message)
 		}
 	}(&cameraWaitGroup, eventChannel)
 
