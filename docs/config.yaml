@@ -40,6 +40,11 @@ ftp:
   password: "root"
   allowFiles: true
   rootPath: "./ftp"
+  # THE FOLLOWING SETTINGS ARE OPTIONAL. Mainly intended for proper connectivity when running in Docker container
+  publicIp: "192.168.0.2"
+  # Export these ports in the container config "-p 21000-21010:21000-21010"
+  passivePorts: "21000-21010"
+
 
 mqtt:
   enabled: true
