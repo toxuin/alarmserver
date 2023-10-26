@@ -68,6 +68,7 @@ func (c *Config) SetDefaults() {
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./config/")
+	viper.AddConfigPath("/config/")
 
 	viper.SetDefault("debug", false)
 	viper.SetDefault("mqtt.port", 1883)
