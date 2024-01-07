@@ -103,6 +103,8 @@ _A_: Some IP cameras have ONVIF, and sometimes that even includes motion alarms,
 
 - Lorex N8428-Z 4K NVR (Dahua server)
 
+- Hiseeu HB613-P 3 MP (Hisilicon server, tested by [abratchik](https://github.com/abratchik))
+
 - HomeViz OB10, K4W10, OW10 (Hisilicon server, tested by [acburnett](https://github.com/acburnett))
 
 If your camera works with Alarm Server - create an issue with some details about it and a picture, and we'll post it here. 
