@@ -56,11 +56,13 @@ type DahuaConfig struct {
 }
 
 type FtpConfig struct {
-	Enabled    bool   `json:"enabled"`
-	Port       int    `json:"port"`
-	AllowFiles bool   `json:"allowFiles"`
-	Password   string `json:"password"`
-	RootPath   string `json:"rootPath"`
+	Enabled      bool   `json:"enabled"`
+	Port         int    `json:"port"`
+	AllowFiles   bool   `json:"allowFiles"`
+	Password     string `json:"password"`
+	RootPath     string `json:"rootPath"`
+	PublicIP     string `json:"publicIP"`
+	PassivePorts string `json:"passivePorts"` // Port range notation. Example: "21000-21010"
 }
 
 func (c *Config) SetDefaults() {
@@ -280,6 +282,8 @@ func (c *Config) Printout() {
 		"    files allowed: %t\n"+
 		"    password set: %t\n"+
 		"    root path: %s\n"+
+		"    public IP: %s\n"+
+		"    passive ports: %s\n"+
 		"  BUS: MQTT - enabled: %t\n"+
 		"    port: %s\n"+
 		"    topicRoot: %s\n"+
@@ -299,6 +303,8 @@ func (c *Config) Printout() {
 		c.Ftp.AllowFiles,
 		c.Ftp.Password != "",
 		c.Ftp.RootPath,
+		c.Ftp.PublicIP,
+		c.Ftp.PassivePorts,
 		c.Mqtt.Enabled,
 		c.Mqtt.Port,
 		c.Mqtt.TopicRoot,

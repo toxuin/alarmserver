@@ -7,12 +7,15 @@ import (
 )
 
 type Server struct {
-	Debug          bool
-	WaitGroup      *sync.WaitGroup
-	Port           int
-	AllowFiles     bool
-	RootPath       string
-	Password       string
+	Debug        bool
+	WaitGroup    *sync.WaitGroup
+	Port         int
+	AllowFiles   bool
+	RootPath     string
+	Password     string
+	PublicIP     string
+	PassivePorts string
+
 	MessageHandler func(cameraName string, eventType string, extra string)
 }
 
@@ -60,6 +63,8 @@ func (serv *Server) Start() {
 			Port:           serv.Port,
 			Perm:           server.NewSimplePerm("root", "root"),
 			Auth:           &DumbAuth{Debug: serv.Debug, Password: serv.Password},
+			PublicIP:       serv.PublicIP,
+			PassivePorts:   serv.PassivePorts,
 		}
 
 		if !serv.Debug {

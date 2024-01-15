@@ -107,6 +107,8 @@ func main() {
 			AllowFiles:     config.Ftp.AllowFiles,
 			RootPath:       config.Ftp.RootPath,
 			Password:       config.Ftp.Password,
+			PublicIP:       config.Ftp.PublicIP,
+			PassivePorts:   config.Ftp.PassivePorts,
 			MessageHandler: messageHandler,
 		}
 		ftpServer.Start()

@@ -78,11 +78,14 @@ Alarm Server will accept any username as FTP login username and use it as camera
 
 ```yaml
 ftp:
-  enabled: true      # if not enabled, it won't accept connections
-  port: 21           # has to match settings in the cameras
-  password: "root"   # FTP password that will be accepted
-  allowFiles: true   # if false, no files will be stored (but transfers will still happen)
-  rootPath: "./ftp"  # folder where to save cameras' uploads
+  enabled: true               # if not enabled, it won't accept connections
+  port: 21                    # has to match settings in the cameras
+  password: "root"            # FTP password that will be accepted
+  allowFiles: true            # if false, no files will be stored (but transfers will still happen)
+  rootPath: "./ftp"           # folder where to save cameras' uploads
+  publicIp: "192.168.0.2"     # Optional - specify FTP server real public IP
+  passivePorts: "21000-21010" # Optional - specify passive mode port range
+
 ```
 
 _Q_: Isn't FTP, like, slow??
@@ -113,7 +116,7 @@ If your camera works with Alarm Server - create an issue with some details about
 
 There is a pre-built image `toxuin/alarmserver`. It is a multi-architecture image and will work both on Intel/AMD machines, and your Raspberry PI too.
 
-Usage: `docker run -d -v $PWD/config.yml:/config.yml -v $PWD/ftp:/ftp -p 21:21 -p 15002:15002 toxuin/alarmserver`
+Usage: `docker run -d -v $PWD/config.yaml:/config.yaml -v $PWD/ftp:/ftp -p 21:21 -p 15002:15002 -p 21000-21010 toxuin/alarmserver`
 
 Explanation:
 
@@ -126,6 +129,9 @@ Explanation:
   - `-p 21:21` allows your machine to pass through port 21 that is used for FTP server. Not needed if you're not using FTP server.
 
   - `-p 15002:15002` same as above, but for port 15002 that's used by HiSilicon alarms server. Not needed if you don't need HiSilicon server.
+
+  - `-p 21000-21010` Optional. Allow pass through FTP passive mode ports specified in the config.
+
 
 ## Feedback
 
